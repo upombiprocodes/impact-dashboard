@@ -401,6 +401,219 @@ const ImpactDashboard = () => {
     }
   };
 
+  const renderDashboard = () => (
+    <>
+      <div style={styles.header}>
+        <h1 style={styles.title}>Hello, Alex! <span style={{ fontSize: '24px' }}>👋</span></h1>
+        <p style={styles.subtitle}>Here's your daily impact summary</p>
+      </div>
+
+      {/* Summary Cards - Colored Backgrounds */}
+      <div style={styles.summaryGrid}>
+        {[
+          { id: 'emitted', label: 'CO₂ Emitted', val: currentWeek.co2Emitted, unit: 'kg', icon: <TrendingDown size={32} />, color: '#c2410c', bg: '#ffedd5' }, // Orange-100 bg, Orange-700 text
+          { id: 'saved', label: 'CO₂ Saved', val: currentWeek.co2Saved, unit: 'kg', icon: <Leaf size={32} />, color: '#15803d', bg: '#dcfce7' }, // Green-100 bg, Green-700 text
+          { id: 'streak', label: 'Streak', val: currentWeek.streak, unit: 'days', icon: <Flame size={32} />, color: '#b91c1c', bg: '#fee2e2' }, // Red-100 bg, Red-700 text
+          { id: 'badges', label: 'Badges', val: unlockedCount, unit: `/${badges.length}`, icon: <Award size={32} />, color: '#7e22ce', bg: '#f3e8ff' } // Purple-100 bg, Purple-700 text
+        ].map(card => (
+          <div
+            key={card.id}
+            style={{
+              ...styles.card,
+              background: card.bg,
+              border: `1px solid ${card.color}20`, // Subtle border matching the color
+              ...(expandedCard === card.id ? styles.cardExpanded : {})
+            }}
+            onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}
+          >
+            <p style={{ ...styles.cardLabel, color: card.color }}>{card.label}</p>
+            <h3 style={{ ...styles.cardValue, color: '#1f2937' }}>{card.val}<span style={{ ...styles.unit, color: '#4b5563' }}>{card.unit}</span></h3>
+            <div style={{ ...styles.cardIcon, color: card.color, opacity: 0.2 }}>
+              {card.icon}
+            </div>
+            {expandedCard === card.id && renderExpandedContent(card.id)}
+          </div>
+        ))}
+      </div>
+
+      <div style={styles.mainGrid}>
+        {/* Left Column */}
+        <div>
+          <div style={styles.chartSection}>
+            <div style={styles.chartHeader}>
+              <h2 style={styles.sectionTitle}>Carbon Journey</h2>
+              <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} style={styles.select}>
+                <option value="4weeks">Last 4 Weeks</option>
+                <option value="8weeks">Last 8 Weeks</option>
+                <option value="12weeks">Last 12 Weeks</option>
+              </select>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={weeklyData}>
+                <defs>
+                  <linearGradient id="colorFootprint" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="colorSaved" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
+                <Area type="monotone" dataKey="footprint" stroke="#f97316" strokeWidth={3} fill="url(#colorFootprint)" name="Emitted" />
+                <Area type="monotone" dataKey="saved" stroke="#10b981" strokeWidth={3} fill="url(#colorSaved)" name="Saved" />
+              </AreaChart>
+            </ResponsiveContainer>
+
+            <div style={styles.insightsGrid}>
+              {[
+                { t: 'Trending Down', d: '-35% vs last month', i: <TrendingDown size={20} />, c: '#10b981', b: '#f0fdf4' },
+                { t: 'Best Week', d: '29kg CO₂ (Week 8)', i: <Star size={20} />, c: '#f59e0b', b: '#fffbeb' },
+                { t: 'Total Saved', d: '162kg CO₂ Lifetime', i: <Trophy size={20} />, c: '#8b5cf6', b: '#f5f3ff' }
+              ].map((i, k) => (
+                <div key={k} style={{ ...styles.insightCard, background: i.b, borderColor: i.b }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: i.c, fontWeight: '600', marginBottom: '8px' }}>
+                    {i.i} <span>{i.t}</span>
+                  </div>
+                  <p style={{ fontSize: '13px', color: '#4b5563' }}>{i.d}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Eco Challenge */}
+          <div style={styles.challengeCard}>
+            <div style={{ position: 'relative', zIndex: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ padding: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}><Zap size={24} color="#fbbf24" /></div>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#fbbf24', letterSpacing: '0.05em' }}>DAILY ECO-CHALLENGE</span>
+              </div>
+              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>Go Meat-Free for Lunch</h3>
+              <p style={{ color: '#d1d5db', maxWidth: '80%' }}>Swap your usual protein for a plant-based alternative. Saves ~1.5kg CO₂ per meal.</p>
+              <button
+                style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981' }}
+                onClick={() => setChallengeAccepted(!challengeAccepted)}
+              >
+                {challengeAccepted ? <CheckCircle size={20} /> : null}
+                {challengeAccepted ? 'Challenge Accepted!' : 'Accept Challenge'}
+              </button>
+            </div>
+            <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1 }}>
+              <Leaf size={200} />
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column */}
+        <div style={styles.sidebar}>
+          {/* Monthly Goal - Expandable */}
+          <div
+            style={{
+              ...styles.rightCard,
+              ...(expandedCard === 'goal' ? { border: '2px solid #10b981' } : {}),
+              cursor: 'pointer'
+            }}
+            onClick={() => setExpandedCard(expandedCard === 'goal' ? null : 'goal')}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ padding: '10px', background: '#eff6ff', borderRadius: '12px', color: '#3b82f6' }}><Target size={20} /></div>
+                <div>
+                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Monthly Goal</h3>
+                  <p style={{ fontSize: '12px', color: '#6b7280' }}>{monthlyGoal.daysLeft} days left</p>
+                </div>
+              </div>
+            </div>
+            <div style={{ marginBottom: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ fontWeight: '700', color: '#1f2937' }}>{monthlyGoal.current}kg</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>/ {monthlyGoal.target}kg</span>
+              </div>
+              <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
+                <div style={{ ...styles.progressBar, width: `${(monthlyGoal.current / monthlyGoal.target) * 100}%` }}></div>
+              </div>
+            </div>
+            {expandedCard === 'goal' && renderExpandedContent('goal')}
+          </div>
+
+          {/* Achievements - Individual Expansion */}
+          <div style={styles.rightCard}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ padding: '10px', background: '#fffbeb', borderRadius: '12px', color: '#f59e0b' }}><Trophy size={20} /></div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Achievements</h3>
+                <p style={{ fontSize: '12px', color: '#6b7280' }}>{unlockedCount} unlocked</p>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {badges.slice(0, 4).map(b => (
+                <div
+                  key={b.id}
+                  style={{
+                    ...styles.badgeItem,
+                    ...(expandedBadge === b.id ? styles.badgeExpanded : {})
+                  }}
+                  onClick={() => setExpandedBadge(expandedBadge === b.id ? null : b.id)}
+                >
+                  <div style={{ fontSize: '20px', opacity: b.unlocked ? 1 : 0.3 }}>{b.icon}</div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#1f2937' }}>{b.name}</div>
+                    {expandedBadge === b.id && (
+                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>{b.description}</div>
+                    )}
+                  </div>
+                  {b.unlocked && <CheckCircle size={14} color="#10b981" />}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Impact Summary - Expandable */}
+          <div
+            style={{
+              ...styles.rightCard,
+              background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer'
+            }}
+            onClick={() => setExpandedCard(expandedCard === 'impact' ? null : 'impact')}
+          >
+            <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Impact Summary</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ opacity: 0.8, fontSize: '14px' }}>Total Saved</span>
+              <span style={{ fontSize: '24px', fontWeight: '700' }}>162kg</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ opacity: 0.8, fontSize: '14px' }}>Trees</span>
+              <span style={{ fontSize: '24px', fontWeight: '700' }}>~3 🌳</span>
+            </div>
+            {expandedCard === 'impact' && renderExpandedContent('impact')}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+
+  const renderPlaceholder = () => (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100%',
+      color: '#6b7280'
+    }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
+      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>Member Page</h2>
+      <p>This section is under construction by other group members.</p>
+    </div>
+  );
+
   return (
     <div style={styles.container}>
       {/* Navigation Sidebar */}
@@ -424,199 +637,7 @@ const ImpactDashboard = () => {
       </div>
 
       <div style={styles.mainContent}>
-        <div style={styles.header}>
-          <h1 style={styles.title}>Hello, Alex! <span style={{ fontSize: '24px' }}>👋</span></h1>
-          <p style={styles.subtitle}>Here's your daily impact summary</p>
-        </div>
-
-        {/* Summary Cards - Colored Backgrounds */}
-        <div style={styles.summaryGrid}>
-          {[
-            { id: 'emitted', label: 'CO₂ Emitted', val: currentWeek.co2Emitted, unit: 'kg', icon: <TrendingDown size={32} />, color: '#c2410c', bg: '#ffedd5' }, // Orange-100 bg, Orange-700 text
-            { id: 'saved', label: 'CO₂ Saved', val: currentWeek.co2Saved, unit: 'kg', icon: <Leaf size={32} />, color: '#15803d', bg: '#dcfce7' }, // Green-100 bg, Green-700 text
-            { id: 'streak', label: 'Streak', val: currentWeek.streak, unit: 'days', icon: <Flame size={32} />, color: '#b91c1c', bg: '#fee2e2' }, // Red-100 bg, Red-700 text
-            { id: 'badges', label: 'Badges', val: unlockedCount, unit: `/${badges.length}`, icon: <Award size={32} />, color: '#7e22ce', bg: '#f3e8ff' } // Purple-100 bg, Purple-700 text
-          ].map(card => (
-            <div
-              key={card.id}
-              style={{
-                ...styles.card,
-                background: card.bg,
-                border: `1px solid ${card.color}20`, // Subtle border matching the color
-                ...(expandedCard === card.id ? styles.cardExpanded : {})
-              }}
-              onClick={() => setExpandedCard(expandedCard === card.id ? null : card.id)}
-            >
-              <p style={{ ...styles.cardLabel, color: card.color }}>{card.label}</p>
-              <h3 style={{ ...styles.cardValue, color: '#1f2937' }}>{card.val}<span style={{ ...styles.unit, color: '#4b5563' }}>{card.unit}</span></h3>
-              <div style={{ ...styles.cardIcon, color: card.color, opacity: 0.2 }}>
-                {card.icon}
-              </div>
-              {expandedCard === card.id && renderExpandedContent(card.id)}
-            </div>
-          ))}
-        </div>
-
-        <div style={styles.mainGrid}>
-          {/* Left Column */}
-          <div>
-            <div style={styles.chartSection}>
-              <div style={styles.chartHeader}>
-                <h2 style={styles.sectionTitle}>Carbon Journey</h2>
-                <select value={timeRange} onChange={(e) => setTimeRange(e.target.value)} style={styles.select}>
-                  <option value="4weeks">Last 4 Weeks</option>
-                  <option value="8weeks">Last 8 Weeks</option>
-                  <option value="12weeks">Last 12 Weeks</option>
-                </select>
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={weeklyData}>
-                  <defs>
-                    <linearGradient id="colorFootprint" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorSaved" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                  <XAxis dataKey="week" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                  <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                  <Area type="monotone" dataKey="footprint" stroke="#f97316" strokeWidth={3} fill="url(#colorFootprint)" name="Emitted" />
-                  <Area type="monotone" dataKey="saved" stroke="#10b981" strokeWidth={3} fill="url(#colorSaved)" name="Saved" />
-                </AreaChart>
-              </ResponsiveContainer>
-
-              <div style={styles.insightsGrid}>
-                {[
-                  { t: 'Trending Down', d: '-35% vs last month', i: <TrendingDown size={20} />, c: '#10b981', b: '#f0fdf4' },
-                  { t: 'Best Week', d: '29kg CO₂ (Week 8)', i: <Star size={20} />, c: '#f59e0b', b: '#fffbeb' },
-                  { t: 'Total Saved', d: '162kg CO₂ Lifetime', i: <Trophy size={20} />, c: '#8b5cf6', b: '#f5f3ff' }
-                ].map((i, k) => (
-                  <div key={k} style={{ ...styles.insightCard, background: i.b, borderColor: i.b }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: i.c, fontWeight: '600', marginBottom: '8px' }}>
-                      {i.i} <span>{i.t}</span>
-                    </div>
-                    <p style={{ fontSize: '13px', color: '#4b5563' }}>{i.d}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Eco Challenge */}
-            <div style={styles.challengeCard}>
-              <div style={{ position: 'relative', zIndex: 2 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                  <div style={{ padding: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}><Zap size={24} color="#fbbf24" /></div>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: '#fbbf24', letterSpacing: '0.05em' }}>DAILY ECO-CHALLENGE</span>
-                </div>
-                <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>Go Meat-Free for Lunch</h3>
-                <p style={{ color: '#d1d5db', maxWidth: '80%' }}>Swap your usual protein for a plant-based alternative. Saves ~1.5kg CO₂ per meal.</p>
-                <button
-                  style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981' }}
-                  onClick={() => setChallengeAccepted(!challengeAccepted)}
-                >
-                  {challengeAccepted ? <CheckCircle size={20} /> : null}
-                  {challengeAccepted ? 'Challenge Accepted!' : 'Accept Challenge'}
-                </button>
-              </div>
-              <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1 }}>
-                <Leaf size={200} />
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div style={styles.sidebar}>
-            {/* Monthly Goal - Expandable */}
-            <div
-              style={{
-                ...styles.rightCard,
-                ...(expandedCard === 'goal' ? { border: '2px solid #10b981' } : {}),
-                cursor: 'pointer'
-              }}
-              onClick={() => setExpandedCard(expandedCard === 'goal' ? null : 'goal')}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{ padding: '10px', background: '#eff6ff', borderRadius: '12px', color: '#3b82f6' }}><Target size={20} /></div>
-                  <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Monthly Goal</h3>
-                    <p style={{ fontSize: '12px', color: '#6b7280' }}>{monthlyGoal.daysLeft} days left</p>
-                  </div>
-                </div>
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '700', color: '#1f2937' }}>{monthlyGoal.current}kg</span>
-                  <span style={{ fontSize: '12px', color: '#6b7280' }}>/ {monthlyGoal.target}kg</span>
-                </div>
-                <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
-                  <div style={{ ...styles.progressBar, width: `${(monthlyGoal.current / monthlyGoal.target) * 100}%` }}></div>
-                </div>
-              </div>
-              {expandedCard === 'goal' && renderExpandedContent('goal')}
-            </div>
-
-            {/* Achievements - Individual Expansion */}
-            <div style={styles.rightCard}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ padding: '10px', background: '#fffbeb', borderRadius: '12px', color: '#f59e0b' }}><Trophy size={20} /></div>
-                <div>
-                  <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Achievements</h3>
-                  <p style={{ fontSize: '12px', color: '#6b7280' }}>{unlockedCount} unlocked</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {badges.slice(0, 4).map(b => (
-                  <div
-                    key={b.id}
-                    style={{
-                      ...styles.badgeItem,
-                      ...(expandedBadge === b.id ? styles.badgeExpanded : {})
-                    }}
-                    onClick={() => setExpandedBadge(expandedBadge === b.id ? null : b.id)}
-                  >
-                    <div style={{ fontSize: '20px', opacity: b.unlocked ? 1 : 0.3 }}>{b.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '13px', fontWeight: '600', color: '#1f2937' }}>{b.name}</div>
-                      {expandedBadge === b.id && (
-                        <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>{b.description}</div>
-                      )}
-                    </div>
-                    {b.unlocked && <CheckCircle size={14} color="#10b981" />}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Impact Summary - Expandable */}
-            <div
-              style={{
-                ...styles.rightCard,
-                background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                color: 'white',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-              onClick={() => setExpandedCard(expandedCard === 'impact' ? null : 'impact')}
-            >
-              <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Impact Summary</h3>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ opacity: 0.8, fontSize: '14px' }}>Total Saved</span>
-                <span style={{ fontSize: '24px', fontWeight: '700' }}>162kg</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ opacity: 0.8, fontSize: '14px' }}>Trees</span>
-                <span style={{ fontSize: '24px', fontWeight: '700' }}>~3 🌳</span>
-              </div>
-              {expandedCard === 'impact' && renderExpandedContent('impact')}
-            </div>
-          </div>
-        </div>
+        {activeNav === 'dashboard' ? renderDashboard() : renderPlaceholder()}
       </div>
     </div>
   );
