@@ -33,27 +33,90 @@ const ImpactDashboard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoading(true);
-        const summary = await fetchDashboardSummary();
-        setSummaryData(summary);
-        const chart = await fetchDashboardChart();
-        setChartData(chart);
-        const badgesData = await fetchBadges();
-        setBadges(badgesData);
-        const goalData = await fetchMonthlyGoal();
-        setMonthlyGoal(goalData);
-        const details = await fetchDashboardDetails();
-        setDetailsData(details);
-        setLoading(false);
-      } catch (error) {
-        console.error('Failed to load dashboard data', error);
-        setError(error.message);
-        setLoading(false);
-      }
+    // Using mock data for demo purposes
+    const loadMockData = () => {
+      setLoading(true);
+
+      // Mock summary data
+      setSummaryData({
+        co2Emitted: 45.2,
+        co2Saved: 23.8,
+        streak: 12,
+        badgesUnlocked: 5,
+        totalBadges: 8,
+        percentChange: -15.3
+      });
+
+      // Mock chart data
+      setChartData([
+        { week: 'Week 1', footprint: 52, saved: 18, baseline: 70 },
+        { week: 'Week 2', footprint: 48, saved: 22, baseline: 70 },
+        { week: 'Week 3', footprint: 51, saved: 19, baseline: 70 },
+        { week: 'Week 4', footprint: 47, saved: 23, baseline: 70 },
+        { week: 'Week 5', footprint: 44, saved: 26, baseline: 70 },
+        { week: 'Week 6', footprint: 46, saved: 24, baseline: 70 },
+        { week: 'Week 7', footprint: 43, saved: 27, baseline: 70 },
+        { week: 'Week 8', footprint: 45, saved: 25, baseline: 70 },
+        { week: 'Week 9', footprint: 42, saved: 28, baseline: 70 },
+        { week: 'Week 10', footprint: 44, saved: 26, baseline: 70 },
+        { week: 'Week 11', footprint: 41, saved: 29, baseline: 70 },
+        { week: 'Week 12', footprint: 45, saved: 24, baseline: 70 }
+      ]);
+
+      // Mock badges
+      setBadges([
+        { id: 1, name: 'First Steps', icon: '🌱', unlocked: true, description: 'Started your sustainability journey' },
+        { id: 2, name: 'Week Warrior', icon: '⚡', unlocked: true, description: 'Maintained streak for 7 days' },
+        { id: 3, name: 'Carbon Cutter', icon: '✂️', unlocked: true, description: 'Reduced emissions by 20%' },
+        { id: 4, name: 'Eco Champion', icon: '🏆', unlocked: true, description: 'Saved 50kg of CO₂' },
+        { id: 5, name: 'Green Guru', icon: '🧘', unlocked: true, description: 'Completed 10 challenges' },
+        { id: 6, name: 'Planet Protector', icon: '🌍', unlocked: false, description: 'Save 100kg of CO₂' },
+        { id: 7, name: 'Sustainability Star', icon: '⭐', unlocked: false, description: 'Maintain 30-day streak' },
+        { id: 8, name: 'Climate Hero', icon: '🦸', unlocked: false, description: 'Reduce emissions by 50%' }
+      ]);
+
+      // Mock monthly goal
+      setMonthlyGoal({
+        target: 100,
+        current: 68,
+        daysLeft: 12
+      });
+
+      // Mock details data
+      setDetailsData({
+        emitted: [
+          { d: 'Mon', v: 6.2 },
+          { d: 'Tue', v: 5.8 },
+          { d: 'Wed', v: 7.1 },
+          { d: 'Thu', v: 6.5 },
+          { d: 'Fri', v: 5.9 },
+          { d: 'Sat', v: 4.2 },
+          { d: 'Sun', v: 3.8 }
+        ],
+        saved: [
+          { n: 'Public Transport', v: '8.5kg' },
+          { n: 'Plant-Based Meals', v: '6.2kg' },
+          { n: 'Recycling', v: '4.8kg' },
+          { n: 'Energy Saving', v: '4.3kg' }
+        ],
+        streak: [true, true, true, true, true, true, true, true, true, true, true, true, false, false],
+        contributions: [
+          { d: 'This Week', v: '23.8kg' },
+          { d: 'Last Week', v: '21.5kg' },
+          { d: 'This Month', v: '68.2kg' }
+        ],
+        impact: [
+          { label: 'Trees Planted', value: '~3' },
+          { label: 'Miles Driven', value: '~120' },
+          { label: 'Plastic Saved', value: '15 bottles' },
+          { label: 'Water Saved', value: '450L' }
+        ]
+      });
+
+      setLoading(false);
     };
-    loadData();
+
+    loadMockData();
   }, []);
 
   if (loading) {
