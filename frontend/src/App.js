@@ -33,90 +33,50 @@ const ImpactDashboard = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Using mock data for demo purposes
-    const loadMockData = () => {
-      setLoading(true);
-
-      // Mock summary data
-      setSummaryData({
-        co2Emitted: 45.2,
-        co2Saved: 23.8,
-        streak: 12,
-        badgesUnlocked: 5,
-        totalBadges: 8,
-        percentChange: -15.3
-      });
-
-      // Mock chart data
-      setChartData([
-        { week: 'Week 1', footprint: 52, saved: 18, baseline: 70 },
-        { week: 'Week 2', footprint: 48, saved: 22, baseline: 70 },
-        { week: 'Week 3', footprint: 51, saved: 19, baseline: 70 },
-        { week: 'Week 4', footprint: 47, saved: 23, baseline: 70 },
-        { week: 'Week 5', footprint: 44, saved: 26, baseline: 70 },
-        { week: 'Week 6', footprint: 46, saved: 24, baseline: 70 },
-        { week: 'Week 7', footprint: 43, saved: 27, baseline: 70 },
-        { week: 'Week 8', footprint: 45, saved: 25, baseline: 70 },
-        { week: 'Week 9', footprint: 42, saved: 28, baseline: 70 },
-        { week: 'Week 10', footprint: 44, saved: 26, baseline: 70 },
-        { week: 'Week 11', footprint: 41, saved: 29, baseline: 70 },
-        { week: 'Week 12', footprint: 45, saved: 24, baseline: 70 }
-      ]);
-
-      // Mock badges
-      setBadges([
-        { id: 1, name: 'First Steps', icon: '🌱', unlocked: true, description: 'Started your sustainability journey' },
-        { id: 2, name: 'Week Warrior', icon: '⚡', unlocked: true, description: 'Maintained streak for 7 days' },
-        { id: 3, name: 'Carbon Cutter', icon: '✂️', unlocked: true, description: 'Reduced emissions by 20%' },
-        { id: 4, name: 'Eco Champion', icon: '🏆', unlocked: true, description: 'Saved 50kg of CO₂' },
-        { id: 5, name: 'Green Guru', icon: '🧘', unlocked: true, description: 'Completed 10 challenges' },
-        { id: 6, name: 'Planet Protector', icon: '🌍', unlocked: false, description: 'Save 100kg of CO₂' },
-        { id: 7, name: 'Sustainability Star', icon: '⭐', unlocked: false, description: 'Maintain 30-day streak' },
-        { id: 8, name: 'Climate Hero', icon: '🦸', unlocked: false, description: 'Reduce emissions by 50%' }
-      ]);
-
-      // Mock monthly goal
-      setMonthlyGoal({
-        target: 100,
-        current: 68,
-        daysLeft: 12
-      });
-
-      // Mock details data
-      setDetailsData({
-        emitted: [
-          { d: 'Mon', v: 6.2 },
-          { d: 'Tue', v: 5.8 },
-          { d: 'Wed', v: 7.1 },
-          { d: 'Thu', v: 6.5 },
-          { d: 'Fri', v: 5.9 },
-          { d: 'Sat', v: 4.2 },
-          { d: 'Sun', v: 3.8 }
-        ],
-        saved: [
-          { n: 'Public Transport', v: '8.5kg' },
-          { n: 'Plant-Based Meals', v: '6.2kg' },
-          { n: 'Recycling', v: '4.8kg' },
-          { n: 'Energy Saving', v: '4.3kg' }
-        ],
-        streak: [true, true, true, true, true, true, true, true, true, true, true, true, false, false],
-        contributions: [
-          { d: 'This Week', v: '23.8kg' },
-          { d: 'Last Week', v: '21.5kg' },
-          { d: 'This Month', v: '68.2kg' }
-        ],
-        impact: [
-          { label: 'Trees Planted', value: '~3' },
-          { label: 'Miles Driven', value: '~120' },
-          { label: 'Plastic Saved', value: '15 bottles' },
-          { label: 'Water Saved', value: '450L' }
-        ]
-      });
-
-      setLoading(false);
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        // Mock data loading
+        setSummaryData({
+          co2Emitted: 12.5,
+          co2Saved: 4.2,
+          streak: 5,
+          badgesUnlocked: 3,
+          totalBadges: 8,
+          percentChange: -12
+        });
+        setChartData([
+          { week: 'W1', footprint: 14, saved: 2 },
+          { week: 'W2', footprint: 13, saved: 3 },
+          { week: 'W3', footprint: 12, saved: 4 },
+          { week: 'W4', footprint: 11, saved: 5 },
+          { week: 'W5', footprint: 12, saved: 4 },
+          { week: 'W6', footprint: 10, saved: 6 },
+          { week: 'W7', footprint: 9, saved: 7 },
+          { week: 'W8', footprint: 8, saved: 8 }
+        ]);
+        setBadges([
+          { id: 1, name: 'Eco Starter', description: 'Saved your first 1kg of CO2', icon: '🌱', unlocked: true },
+          { id: 2, name: 'Streak Master', description: '7 day streak', icon: '🔥', unlocked: true },
+          { id: 3, name: 'Meat Free', description: 'No meat for a week', icon: '🥗', unlocked: true },
+          { id: 4, name: 'Car Free', description: 'Walked/Cycled 50km', icon: '🚲', unlocked: false }
+        ]);
+        setMonthlyGoal({ target: 50, current: 32, daysLeft: 12 });
+        setDetailsData({
+          emitted: [{ d: 'Mon', v: 2.1 }, { d: 'Tue', v: 1.8 }, { d: 'Wed', v: 2.4 }, { d: 'Thu', v: 1.9 }, { d: 'Fri', v: 2.2 }, { d: 'Sat', v: 1.1 }, { d: 'Sun', v: 1.0 }],
+          saved: [{ n: 'Cycled to work', v: '0.8kg' }, { n: 'Veggie lunch', v: '1.2kg' }, { n: 'Recycled', v: '0.3kg' }],
+          streak: [true, true, true, true, true, false, false],
+          contributions: [{ d: 'Today', v: '2.3kg' }, { d: 'Yesterday', v: '1.9kg' }, { d: 'Nov 24', v: '3.1kg' }],
+          impact: [{ label: 'Trees Planted', value: '3' }, { label: 'Miles Driven Avoided', value: '42' }]
+        });
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+        setError(error.message);
+        setLoading(false);
+      }
     };
-
-    loadMockData();
+    loadData();
   }, []);
 
   if (loading) {
@@ -140,8 +100,6 @@ const ImpactDashboard = () => {
     percentChange: summaryData.percentChange,
     streak: summaryData.streak
   };
-
-
 
   const unlockedCount = summaryData.badgesUnlocked;
 
@@ -662,7 +620,24 @@ const ImpactDashboard = () => {
     </>
   );
 
-  const renderPlaceholder = () => (
+  const renderContent = () => {
+    switch (activeNav) {
+      case 'dashboard':
+        return renderDashboard();
+      case 'food':
+        return renderPlaceholder('Food Search');
+      case 'meal':
+        return renderPlaceholder('Meal Planner');
+      case 'insight':
+        return renderPlaceholder('Insights');
+      case 'community':
+        return renderPlaceholder('Community');
+      default:
+        return renderDashboard();
+    }
+  };
+
+  const renderPlaceholder = (title) => (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
@@ -672,7 +647,7 @@ const ImpactDashboard = () => {
       color: '#6b7280'
     }}>
       <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
-      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>Member Page</h2>
+      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>{title || 'Member Page'}</h2>
       <p>This section is under construction by other group members.</p>
     </div>
   );
@@ -700,7 +675,7 @@ const ImpactDashboard = () => {
       </div>
 
       <div style={styles.mainContent}>
-        {activeNav === 'dashboard' ? renderDashboard() : renderPlaceholder()}
+        {renderContent()}
       </div>
     </div>
   );
