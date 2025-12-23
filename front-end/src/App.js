@@ -6,8 +6,27 @@ import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircl
 const ImpactDashboard = () => {
   const [timeRange, setTimeRange] = useState('8weeks');
   const [expandedCard, setExpandedCard] = useState(null);
-  const [challengeAccepted, setChallengeAccepted] = useState(false);
+  const [challengeAccepted, setChallengeAccepted] = useState(() => {
+    // Load from localStorage on initial render
+    const saved = localStorage.getItem('challengeAccepted');
+    const savedDate = localStorage.getItem('challengeDate');
+    const today = new Date().toDateString();
+    // Reset if it's a new day (daily challenge)
+    if (savedDate !== today) {
+      localStorage.removeItem('challengeAccepted');
+      return false;
+    }
+    return saved === 'true';
+  });
   const [expandedBadge, setExpandedBadge] = useState(null);
+
+  // Handle challenge acceptance with persistence
+  const handleChallengeClick = () => {
+    const newState = !challengeAccepted;
+    setChallengeAccepted(newState);
+    localStorage.setItem('challengeAccepted', newState.toString());
+    localStorage.setItem('challengeDate', new Date().toDateString());
+  };
 
   // Extended data for 12 weeks
   const [summaryData, setSummaryData] = useState({
@@ -499,7 +518,7 @@ const ImpactDashboard = () => {
               <p style={{ color: '#d1d5db', maxWidth: '80%' }}>Swap your usual protein for a plant-based alternative. Saves ~1.5kg CO₂ per meal.</p>
               <button
                 style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981' }}
-                onClick={() => setChallengeAccepted(!challengeAccepted)}
+                onClick={handleChallengeClick}
               >
                 {challengeAccepted ? <CheckCircle size={20} /> : null}
                 {challengeAccepted ? 'Challenge Accepted!' : 'Accept Challenge'}
@@ -589,11 +608,11 @@ const ImpactDashboard = () => {
             <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Impact Summary</h3>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <span style={{ opacity: 0.8, fontSize: '14px' }}>Total Saved</span>
-              <span style={{ fontSize: '24px', fontWeight: '700' }}>162kg</span>
+              <span style={{ fontSize: '24px', fontWeight: '700' }}>{chartData.reduce((sum, week) => sum + week.saved, 0)}kg</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ opacity: 0.8, fontSize: '14px' }}>Trees</span>
-              <span style={{ fontSize: '24px', fontWeight: '700' }}>~3 🌳</span>
+              <span style={{ fontSize: '24px', fontWeight: '700' }}>~{Math.round(chartData.reduce((sum, week) => sum + week.saved, 0) / 50)} 🌳</span>
             </div>
             {expandedCard === 'impact' && renderExpandedContent('impact')}
           </div>
