@@ -540,20 +540,34 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
           </div>
         );
       case 'streak':
+        // Dynamic streak calendar - generates boxes based on actual streak count
+        const streakDays = summaryData.streak || 0;
+        const weeksToShow = Math.max(Math.ceil(streakDays / 7), 1); // At least 1 week
+        const totalBoxes = weeksToShow * 7;
+        const streakBoxes = Array.from({ length: totalBoxes }, (_, i) => i < streakDays);
+        
         return (
           <div style={styles.expandedContent}>
+            <div style={{ marginBottom: '12px', fontSize: '12px', color: '#6b7280' }}>
+              {streakDays > 0 
+                ? `🔥 ${streakDays} consecutive days of eco-friendly choices!` 
+                : 'Complete challenges to start your streak!'}
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center' }}>
-              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => <span key={d} style={{ fontSize: '10px', color: '#9ca3af' }}>{d}</span>)}
-              {detailsData.streak.map((completed, i) => (
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => <span key={i} style={{ fontSize: '10px', color: '#9ca3af' }}>{d}</span>)}
+              {streakBoxes.map((completed, i) => (
                 <div key={i} style={{
                   aspectRatio: '1',
                   background: completed ? '#ef4444' : '#fecaca',
                   borderRadius: '4px',
-                  opacity: completed ? 1 : 0.5,
+                  opacity: completed ? 1 : 0.3,
                   fontSize: '10px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white'
                 }}>{completed ? '✓' : ''}</div>
               ))}
+            </div>
+            <div style={{ marginTop: '8px', fontSize: '11px', color: '#9ca3af', textAlign: 'center' }}>
+              {weeksToShow} week{weeksToShow > 1 ? 's' : ''} shown • {streakDays} day{streakDays !== 1 ? 's' : ''} completed
             </div>
           </div>
         );
