@@ -693,9 +693,31 @@ const ImpactDashboard = () => {
               <span style={{ opacity: 0.8, fontSize: '14px' }}>Total Saved</span>
               <span style={{ fontSize: '24px', fontWeight: '700' }}>{chartData.reduce((sum, week) => sum + week.saved, 0)}kg</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <span style={{ opacity: 0.8, fontSize: '14px' }}>Trees</span>
               <span style={{ fontSize: '24px', fontWeight: '700' }}>~{Math.round(chartData.reduce((sum, week) => sum + week.saved, 0) / 50)} 🌳</span>
+            </div>
+            
+            {/* Water & Land stats from API */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: '1fr 1fr', 
+              gap: '8px',
+              marginTop: '8px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(255,255,255,0.2)'
+            }}>
+              {detailsData.impact && detailsData.impact.map((item, idx) => (
+                <div key={idx} style={{ 
+                  background: 'rgba(255,255,255,0.15)', 
+                  padding: '10px', 
+                  borderRadius: '10px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '11px', opacity: 0.8 }}>{item.label}</div>
+                  <div style={{ fontSize: '18px', fontWeight: '700' }}>{item.value}</div>
+                </div>
+              ))}
             </div>
             {expandedCard === 'impact' && renderExpandedContent('impact')}
           </div>

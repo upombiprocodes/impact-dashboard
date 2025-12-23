@@ -12,12 +12,12 @@ if db.query(models.DashboardSummary).first():
 else:
     print("Initializing database...")
     
-    # Summary
+    # Summary - 226kg total saved (sum of weekly), 5 badges unlocked
     summary = models.DashboardSummary(
         co2Emitted=25,
         co2Saved=32,
         streak=47,
-        badgesUnlocked=4,
+        badgesUnlocked=5,  # Updated: Plant Pioneer now unlocked
         totalBadges=6,
         percentChange=-6.5
     )
@@ -40,13 +40,13 @@ else:
     ]
     db.add_all(weekly_data)
 
-    # Badges
+    # Badges - Plant Pioneer unlocked (226kg > 200kg)
     badges = [
         models.Badge(name="First Week", icon="🌱", unlocked=True, description="Logged your first week"),
         models.Badge(name="Beef-Free", icon="🥗", unlocked=True, description="7 days without beef"),
         models.Badge(name="Hot Streak", icon="🔥", unlocked=True, description="30-day logging streak"),
         models.Badge(name="Carbon Crusher", icon="💪", unlocked=True, description="Saved 100kg CO₂"),
-        models.Badge(name="Plant Pioneer", icon="🌿", unlocked=False, description="Save 200kg CO₂"),
+        models.Badge(name="Plant Pioneer", icon="🌿", unlocked=True, description="Save 200kg CO₂"),  # NOW UNLOCKED
         models.Badge(name="Climate Champ", icon="🏆", unlocked=False, description="90-day streak"),
     ]
     db.add_all(badges)

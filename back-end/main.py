@@ -104,6 +104,23 @@ class DashboardDetails(BaseModel):
 def read_root():
     return {"status": "ok", "message": "Impact Dashboard Backend is running"}
 
+# One-time fix endpoint to update Plant Pioneer badge
+@app.get("/api/fix-badges")
+def fix_badges(db: Session = Depends(get_db)):
+    # Update Plant Pioneer to unlocked (user has 226kg saved > 200kg requirement)
+    plant_pioneer = db.query(models.Badge).filter(models.Badge.name == "Plant Pioneer").first()
+    if plant_pioneer:
+        plant_pioneer.unlocked = True
+        db.commit()
+    
+    # Update summary to show 5 badges unlocked
+    summary = db.query(models.DashboardSummary).first()
+    if summary:
+        summary.badgesUnlocked = 5
+        db.commit()
+    
+    return {"status": "fixed", "message": "Plant Pioneer badge unlocked, summary updated to 5 badges"}
+
 @app.get("/api/dashboard/summary", response_model=DashboardSummary)
 def get_dashboard_summary(db: Session = Depends(get_db)):
     summary = db.query(models.DashboardSummary).first()
