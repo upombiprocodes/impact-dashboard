@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails } from './services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircle, Droplets, Mountain, ArrowRight, Star, Trophy, Zap, Target } from 'lucide-react';
@@ -7,11 +7,9 @@ const ImpactDashboard = () => {
   const [timeRange, setTimeRange] = useState('8weeks');
   const [expandedCard, setExpandedCard] = useState(null);
   const [challengeAccepted, setChallengeAccepted] = useState(() => {
-    // Load from localStorage on initial render
     const saved = localStorage.getItem('challengeAccepted');
     const savedDate = localStorage.getItem('challengeDate');
     const today = new Date().toDateString();
-    // Reset if it's a new day (daily challenge)
     if (savedDate !== today) {
       localStorage.removeItem('challengeAccepted');
       return false;
@@ -20,7 +18,6 @@ const ImpactDashboard = () => {
   });
   const [expandedBadge, setExpandedBadge] = useState(null);
 
-  // Handle challenge acceptance with persistence
   const handleChallengeClick = () => {
     const newState = !challengeAccepted;
     setChallengeAccepted(newState);
@@ -28,17 +25,14 @@ const ImpactDashboard = () => {
     localStorage.setItem('challengeDate', new Date().toDateString());
   };
 
-  // Extended data for 12 weeks
   const [summaryData, setSummaryData] = useState({
     co2Emitted: 0,
     co2Saved: 0,
-    streak: 0,
-    badgesUnlocked: 0,
-    totalBadges: 0
+    streak: 0
   });
   const [chartData, setChartData] = useState([]);
-  const [badges, setBadges] = useState([]);
-  const [monthlyGoal, setMonthlyGoal] = useState({ target: 100, current: 0, daysLeft: 0 });
+  const [badgesConfig, setBadgesConfig] = useState([]);
+  const [monthlyGoal, setMonthlyGoal] = useState({ target: 100, current: 0 });
   const [detailsData, setDetailsData] = useState({
     emitted: [],
     saved: [],
@@ -54,8 +48,6 @@ const ImpactDashboard = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch real data from backend API
         const [summary, chart, badgesData, goal, details] = await Promise.all([
           fetchDashboardSummary(),
           fetchDashboardChart(),
@@ -66,10 +58,9 @@ const ImpactDashboard = () => {
         
         setSummaryData(summary);
         setChartData(chart);
-        setBadges(badgesData);
+        setBadgesConfig(badgesData);
         setMonthlyGoal(goal);
         setDetailsData(details);
-        
         setLoading(false);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
@@ -79,6 +70,115 @@ const ImpactDashboard = () => {
     };
     loadData();
   }, []);
+
+  // ============ ALL DYNAMIC CALCULATIONS ============
+  
+  // Calculate total CO2 saved from chart data
+  const totalSaved = useMemo(() => {
+    return chartData.reduce((sum, week) => sum + (week.saved || 0), 0);
+  }, [chartData]);
+
+  // Calculate days left in current month
+  const daysLeftInMonth = useMemo(() => {
+    const today = new Date();
+    const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return lastDay.getDate() - today.getDate();
+  }, []);
+
+  // Calculate Water & Land saved (environmental impact formulas)
+  const environmentalImpact = useMemo(() => {
+    // Average: 1kg CO2 saved ≈ 15L water saved, 0.5m² land saved
+    return {
+      water: Math.round(totalSaved * 15),
+      land: Math.round(totalSaved * 0.5)
+    };
+  }, [totalSaved]);
+
+  // Calculate trees equivalent (1 tree absorbs ~21kg CO2/year)
+  const treesEquivalent = useMemo(() => {
+    return Math.round(totalSaved / 21);
+  }, [totalSaved]);
+
+  // Dynamic badge calculation based on user progress
+  const badges = useMemo(() => {
+    const streak = summaryData.streak || 0;
+    
+    return [
+      {
+        id: 1,
+        name: "First Week",
+        icon: "🌱",
+        description: "Logged your first week of tracking",
+        unlocked: chartData.length >= 1,
+        progress: chartData.length >= 1 ? 100 : (chartData.length / 1) * 100,
+        target: "1 week"
+      },
+      {
+        id: 2,
+        name: "Beef-Free",
+        icon: "🥗",
+        description: "7 consecutive days without beef",
+        unlocked: streak >= 7,
+        progress: Math.min((streak / 7) * 100, 100),
+        target: `${Math.min(streak, 7)}/7 days`
+      },
+      {
+        id: 3,
+        name: "Hot Streak",
+        icon: "🔥",
+        description: "Maintain a 30-day logging streak",
+        unlocked: streak >= 30,
+        progress: Math.min((streak / 30) * 100, 100),
+        target: `${Math.min(streak, 30)}/30 days`
+      },
+      {
+        id: 4,
+        name: "Carbon Crusher",
+        icon: "💪",
+        description: "Save 100kg of CO₂ emissions",
+        unlocked: totalSaved >= 100,
+        progress: Math.min((totalSaved / 100) * 100, 100),
+        target: `${Math.min(Math.round(totalSaved), 100)}/100kg`
+      },
+      {
+        id: 5,
+        name: "Plant Pioneer",
+        icon: "🌿",
+        description: "Save 200kg of CO₂ emissions",
+        unlocked: totalSaved >= 200,
+        progress: Math.min((totalSaved / 200) * 100, 100),
+        target: `${Math.min(Math.round(totalSaved), 200)}/200kg`
+      },
+      {
+        id: 6,
+        name: "Climate Champ",
+        icon: "🏆",
+        description: "Maintain a 90-day streak",
+        unlocked: streak >= 90,
+        progress: Math.min((streak / 90) * 100, 100),
+        target: `${Math.min(streak, 90)}/90 days`
+      }
+    ];
+  }, [chartData, summaryData.streak, totalSaved]);
+
+  // Calculate unlocked badge count dynamically
+  const unlockedCount = useMemo(() => {
+    return badges.filter(b => b.unlocked).length;
+  }, [badges]);
+
+  // Calculate monthly goal progress
+  const monthlyProgress = useMemo(() => {
+    // Use current month's saved CO2 (last 4 weeks approximation)
+    const recentWeeks = chartData.slice(-4);
+    const monthSaved = recentWeeks.reduce((sum, week) => sum + (week.saved || 0), 0);
+    return {
+      current: monthSaved,
+      target: monthlyGoal.target || 100,
+      percentage: Math.min((monthSaved / (monthlyGoal.target || 100)) * 100, 100)
+    };
+  }, [chartData, monthlyGoal.target]);
+
+  // ============ END DYNAMIC CALCULATIONS ============
 
   if (loading) {
     return <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>Loading...</div>;
@@ -101,8 +201,6 @@ const ImpactDashboard = () => {
     percentChange: summaryData.percentChange,
     streak: summaryData.streak
   };
-
-  const unlockedCount = summaryData.badgesUnlocked;
 
   const styles = {
     container: {
@@ -410,12 +508,22 @@ const ImpactDashboard = () => {
         return (
           <div style={styles.expandedContent}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              {detailsData.impact.map((item, k) => (
-                <div key={k} style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
-                  <div style={{ fontSize: '11px', opacity: 0.8 }}>{item.label}</div>
-                  <div style={{ fontSize: '16px', fontWeight: '700' }}>{item.value}</div>
-                </div>
-              ))}
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>Water Saved</div>
+                <div style={{ fontSize: '16px', fontWeight: '700' }}>{environmentalImpact.water.toLocaleString()}L</div>
+              </div>
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>Land Saved</div>
+                <div style={{ fontSize: '16px', fontWeight: '700' }}>{environmentalImpact.land}m²</div>
+              </div>
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>Trees Equivalent</div>
+                <div style={{ fontSize: '16px', fontWeight: '700' }}>~{treesEquivalent} 🌳</div>
+              </div>
+              <div style={{ padding: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '12px' }}>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>Total CO₂</div>
+                <div style={{ fontSize: '16px', fontWeight: '700' }}>{totalSaved}kg</div>
+              </div>
             </div>
           </div>
         );
@@ -493,9 +601,9 @@ const ImpactDashboard = () => {
 
             <div style={styles.insightsGrid}>
               {[
-                { t: 'Trending Down', d: '-35% vs last month', i: <TrendingDown size={20} />, c: '#10b981', b: '#f0fdf4' },
-                { t: 'Best Week', d: '29kg CO₂ (Week 8)', i: <Star size={20} />, c: '#f59e0b', b: '#fffbeb' },
-                { t: 'Total Saved', d: '162kg CO₂ Lifetime', i: <Trophy size={20} />, c: '#8b5cf6', b: '#f5f3ff' }
+                { t: 'Trending Down', d: `${summaryData.percentChange || 0}% vs last month`, i: <TrendingDown size={20} />, c: '#10b981', b: '#f0fdf4' },
+                { t: 'Best Week', d: `${Math.max(...chartData.map(w => w.saved || 0))}kg CO₂ saved`, i: <Star size={20} />, c: '#f59e0b', b: '#fffbeb' },
+                { t: 'Total Saved', d: `${totalSaved}kg CO₂ Lifetime`, i: <Trophy size={20} />, c: '#8b5cf6', b: '#f5f3ff' }
               ].map((i, k) => (
                 <div key={k} style={{ ...styles.insightCard, background: i.b, borderColor: i.b }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: i.c, fontWeight: '600', marginBottom: '8px' }}>
@@ -550,7 +658,7 @@ const ImpactDashboard = () => {
 
         {/* Right Column */}
         <div style={styles.sidebar}>
-          {/* Monthly Goal - Expandable */}
+          {/* Monthly Goal - Dynamic Calculation */}
           <div
             style={{
               ...styles.rightCard,
@@ -564,22 +672,22 @@ const ImpactDashboard = () => {
                 <div style={{ padding: '10px', background: '#eff6ff', borderRadius: '12px', color: '#3b82f6' }}><Target size={20} /></div>
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Monthly Goal</h3>
-                  <p style={{ fontSize: '12px', color: '#6b7280' }}>{monthlyGoal.daysLeft} days left this month</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280' }}>{daysLeftInMonth} days left this month</p>
                 </div>
               </div>
             </div>
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: '700', color: '#1f2937' }}>{monthlyGoal.current}kg saved</span>
-                <span style={{ fontSize: '12px', color: '#6b7280' }}>/ {monthlyGoal.target}kg target</span>
+                <span style={{ fontWeight: '700', color: '#1f2937' }}>{monthlyProgress.current}kg saved</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>/ {monthlyProgress.target}kg target</span>
               </div>
               <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
-                <div style={{ ...styles.progressBar, width: `${Math.min((monthlyGoal.current / monthlyGoal.target) * 100, 100)}%` }}></div>
+                <div style={{ ...styles.progressBar, width: `${monthlyProgress.percentage}%` }}></div>
               </div>
               <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px' }}>
-                {monthlyGoal.current >= monthlyGoal.target 
+                {monthlyProgress.current >= monthlyProgress.target 
                   ? '🎉 Goal achieved!' 
-                  : `${monthlyGoal.target - monthlyGoal.current}kg more to reach your goal`}
+                  : `${monthlyProgress.target - monthlyProgress.current}kg more to reach your goal`}
               </p>
             </div>
             {expandedCard === 'goal' && renderExpandedContent('goal')}
@@ -595,85 +703,62 @@ const ImpactDashboard = () => {
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {badges.map(b => {
-                // Calculate progress for each badge
-                const totalSaved = chartData.reduce((sum, week) => sum + week.saved, 0);
-                let progress = 0;
-                let progressTarget = '';
-                
-                if (b.name === 'Carbon Crusher') {
-                  progress = Math.min((totalSaved / 100) * 100, 100);
-                  progressTarget = `${Math.min(totalSaved, 100)}/100kg`;
-                } else if (b.name === 'Plant Pioneer') {
-                  progress = Math.min((totalSaved / 200) * 100, 100);
-                  progressTarget = `${Math.min(totalSaved, 200)}/200kg`;
-                } else if (b.name === 'Hot Streak') {
-                  progress = Math.min((summaryData.streak / 30) * 100, 100);
-                  progressTarget = `${Math.min(summaryData.streak, 30)}/30 days`;
-                } else if (b.name === 'Climate Champ') {
-                  progress = Math.min((summaryData.streak / 90) * 100, 100);
-                  progressTarget = `${Math.min(summaryData.streak, 90)}/90 days`;
-                } else {
-                  progress = b.unlocked ? 100 : 0;
-                }
-                
-                return (
-                  <div
-                    key={b.id}
-                    style={{
-                      ...styles.badgeItem,
-                      flexDirection: 'column',
-                      alignItems: 'stretch',
-                      ...(expandedBadge === b.id ? styles.badgeExpanded : {})
-                    }}
-                    onClick={() => setExpandedBadge(expandedBadge === b.id ? null : b.id)}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ fontSize: '20px', opacity: b.unlocked ? 1 : 0.4 }}>{b.icon}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: b.unlocked ? '#1f2937' : '#9ca3af' }}>{b.name}</div>
-                      </div>
-                      {b.unlocked ? (
-                        <CheckCircle size={16} color="#10b981" />
-                      ) : (
-                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{progressTarget}</span>
-                      )}
+              {badges.map(b => (
+                <div
+                  key={b.id}
+                  style={{
+                    ...styles.badgeItem,
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    ...(expandedBadge === b.id ? styles.badgeExpanded : {})
+                  }}
+                  onClick={() => setExpandedBadge(expandedBadge === b.id ? null : b.id)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '20px', opacity: b.unlocked ? 1 : 0.4 }}>{b.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '13px', fontWeight: '600', color: b.unlocked ? '#1f2937' : '#9ca3af' }}>{b.name}</div>
                     </div>
-                    
-                    {/* Progress bar for incomplete badges */}
-                    {!b.unlocked && (
-                      <div style={{ marginTop: '8px' }}>
-                        <div style={{ height: '4px', background: 'rgba(0,0,0,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
-                          <div style={{ 
-                            height: '100%', 
-                            background: 'linear-gradient(90deg, #10b981, #34d399)', 
-                            borderRadius: '99px',
-                            width: `${progress}%`,
-                            transition: 'width 0.5s ease'
-                          }}></div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Expanded description */}
-                    {expandedBadge === b.id && (
-                      <div style={{ 
-                        marginTop: '10px', 
-                        padding: '10px', 
-                        background: b.unlocked ? '#ecfdf5' : '#f9fafb', 
-                        borderRadius: '8px',
-                        fontSize: '12px',
-                        color: '#4b5563'
-                      }}>
-                        <p style={{ margin: 0 }}>{b.description}</p>
-                        {b.unlocked && (
-                          <p style={{ margin: '8px 0 0 0', color: '#10b981', fontWeight: '600' }}>✓ Completed!</p>
-                        )}
-                      </div>
+                    {b.unlocked ? (
+                      <CheckCircle size={16} color="#10b981" />
+                    ) : (
+                      <span style={{ fontSize: '11px', color: '#6b7280' }}>{b.target}</span>
                     )}
                   </div>
-                );
-              })}
+                  
+                  {/* Progress bar for incomplete badges */}
+                  {!b.unlocked && (
+                    <div style={{ marginTop: '8px' }}>
+                      <div style={{ height: '4px', background: 'rgba(0,0,0,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{ 
+                          height: '100%', 
+                          background: 'linear-gradient(90deg, #10b981, #34d399)', 
+                          borderRadius: '99px',
+                          width: `${b.progress}%`,
+                          transition: 'width 0.5s ease'
+                        }}></div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Expanded description */}
+                  {expandedBadge === b.id && (
+                    <div style={{ 
+                      marginTop: '10px', 
+                      padding: '10px', 
+                      background: b.unlocked ? '#ecfdf5' : '#f9fafb', 
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      color: '#4b5563'
+                    }}>
+                      <p style={{ margin: 0 }}>{b.description}</p>
+                      {b.unlocked && (
+                        <p style={{ margin: '8px 0 0 0', color: '#10b981', fontWeight: '600' }}>✓ Completed!</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -691,14 +776,14 @@ const ImpactDashboard = () => {
             <h3 style={{ fontSize: '18px', fontWeight: '700', marginBottom: '16px' }}>Impact Summary</h3>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <span style={{ opacity: 0.8, fontSize: '14px' }}>Total Saved</span>
-              <span style={{ fontSize: '24px', fontWeight: '700' }}>{chartData.reduce((sum, week) => sum + week.saved, 0)}kg</span>
+              <span style={{ fontSize: '24px', fontWeight: '700' }}>{totalSaved}kg</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
               <span style={{ opacity: 0.8, fontSize: '14px' }}>Trees</span>
-              <span style={{ fontSize: '24px', fontWeight: '700' }}>~{Math.round(chartData.reduce((sum, week) => sum + week.saved, 0) / 50)} 🌳</span>
+              <span style={{ fontSize: '24px', fontWeight: '700' }}>~{treesEquivalent} 🌳</span>
             </div>
             
-            {/* Water & Land stats from API */}
+            {/* Water & Land stats - calculated dynamically */}
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: '1fr 1fr', 
@@ -707,17 +792,24 @@ const ImpactDashboard = () => {
               paddingTop: '12px',
               borderTop: '1px solid rgba(255,255,255,0.2)'
             }}>
-              {detailsData.impact && detailsData.impact.map((item, idx) => (
-                <div key={idx} style={{ 
-                  background: 'rgba(255,255,255,0.15)', 
-                  padding: '10px', 
-                  borderRadius: '10px',
-                  textAlign: 'center'
-                }}>
-                  <div style={{ fontSize: '11px', opacity: 0.8 }}>{item.label}</div>
-                  <div style={{ fontSize: '18px', fontWeight: '700' }}>{item.value}</div>
-                </div>
-              ))}
+              <div style={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                padding: '10px', 
+                borderRadius: '10px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>Water Saved</div>
+                <div style={{ fontSize: '18px', fontWeight: '700' }}>{environmentalImpact.water.toLocaleString()}L</div>
+              </div>
+              <div style={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                padding: '10px', 
+                borderRadius: '10px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '11px', opacity: 0.8 }}>Land Saved</div>
+                <div style={{ fontSize: '18px', fontWeight: '700' }}>{environmentalImpact.land}m²</div>
+              </div>
             </div>
             {expandedCard === 'impact' && renderExpandedContent('impact')}
           </div>
