@@ -1,6 +1,58 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, DateTime
 from sqlalchemy.orm import relationship
 from database import Base
+from datetime import datetime
+
+# User Authentication Model
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    display_name = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    is_demo = Column(Boolean, default=False)  # Demo account flag
+    
+    # Relationships
+    weekly_data = relationship("UserWeeklyData", back_populates="user")
+    badges = relationship("UserBadge", back_populates="user")
+    challenge_completions = relationship("ChallengeCompletion", back_populates="user")
+
+class UserWeeklyData(Base):
+    __tablename__ = "user_weekly_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    week = Column(String, index=True)
+    footprint = Column(Integer, default=0)
+    saved = Column(Integer, default=0)
+    baseline = Column(Integer, default=35)
+    
+    user = relationship("User", back_populates="weekly_data")
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    badge_name = Column(String)
+    unlocked = Column(Boolean, default=False)
+    unlocked_at = Column(DateTime, nullable=True)
+    
+    user = relationship("User", back_populates="badges")
+
+class ChallengeCompletion(Base):
+    __tablename__ = "challenge_completions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    challenge_id = Column(Integer)
+    completed_at = Column(DateTime, default=datetime.utcnow)
+    co2_saved = Column(Float)
+    
+    user = relationship("User", back_populates="challenge_completions")
 
 class WeeklyData(Base):
     __tablename__ = "weekly_data"

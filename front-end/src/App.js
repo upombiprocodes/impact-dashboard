@@ -1,29 +1,98 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails } from './services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircle, Droplets, Mountain, ArrowRight, Star, Trophy, Zap, Target } from 'lucide-react';
+import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircle, Droplets, Mountain, ArrowRight, Star, Trophy, Zap, Target, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
+import LoginPage from './pages/LoginPage';
+import { challenges, getDailyChallenge, getChallengesByCategory } from './data/challenges';
 
-const ImpactDashboard = () => {
+// Main App Component with Auth
+const App = () => {
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [token, setToken] = useState(() => localStorage.getItem('token'));
+
+  const handleLogin = (userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('token');
+    setUser(null);
+    setToken(null);
+  };
+
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  return <ImpactDashboard user={user} token={token} onLogout={handleLogout} />;
+};
+
+const ImpactDashboard = ({ user, token, onLogout }) => {
   const [timeRange, setTimeRange] = useState('8weeks');
   const [expandedCard, setExpandedCard] = useState(null);
+  const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0);
   const [challengeAccepted, setChallengeAccepted] = useState(() => {
-    const saved = localStorage.getItem('challengeAccepted');
-    const savedDate = localStorage.getItem('challengeDate');
+    const saved = localStorage.getItem(`challenge_${user?.id}_accepted`);
+    const savedDate = localStorage.getItem(`challenge_${user?.id}_date`);
+    const savedIndex = localStorage.getItem(`challenge_${user?.id}_index`);
     const today = new Date().toDateString();
     if (savedDate !== today) {
-      localStorage.removeItem('challengeAccepted');
+      localStorage.removeItem(`challenge_${user?.id}_accepted`);
+      localStorage.removeItem(`challenge_${user?.id}_index`);
       return false;
     }
+    if (savedIndex) setCurrentChallengeIndex(parseInt(savedIndex));
     return saved === 'true';
   });
   const [expandedBadge, setExpandedBadge] = useState(null);
+  const [showAllChallenges, setShowAllChallenges] = useState(false);
+  const [challengeFilter, setChallengeFilter] = useState('all');
 
-  const handleChallengeClick = () => {
+  // Get daily challenge or selected challenge
+  const dailyChallenge = useMemo(() => getDailyChallenge(), []);
+  const currentChallenge = showAllChallenges ? challenges[currentChallengeIndex] : dailyChallenge;
+
+  const handleChallengeClick = async () => {
     const newState = !challengeAccepted;
     setChallengeAccepted(newState);
-    localStorage.setItem('challengeAccepted', newState.toString());
-    localStorage.setItem('challengeDate', new Date().toDateString());
+    localStorage.setItem(`challenge_${user?.id}_accepted`, newState.toString());
+    localStorage.setItem(`challenge_${user?.id}_date`, new Date().toDateString());
+    localStorage.setItem(`challenge_${user?.id}_index`, currentChallengeIndex.toString());
+
+    // If completing challenge and logged in, notify backend
+    if (newState && token) {
+      try {
+        await fetch(`https://impact-dashboard-2eau.onrender.com/api/user/challenges/${currentChallenge.id}/complete?co2_saved=${currentChallenge.co2Impact}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      } catch (err) {
+        console.error('Failed to record challenge completion:', err);
+      }
+    }
   };
+
+  const nextChallenge = () => {
+    setChallengeAccepted(false);
+    setCurrentChallengeIndex((prev) => (prev + 1) % challenges.length);
+  };
+
+  const prevChallenge = () => {
+    setChallengeAccepted(false);
+    setCurrentChallengeIndex((prev) => (prev - 1 + challenges.length) % challenges.length);
+  };
+
+  const filteredChallenges = useMemo(() => {
+    return getChallengesByCategory(challengeFilter);
+  }, [challengeFilter]);
 
   const [summaryData, setSummaryData] = useState({
     co2Emitted: 0,
@@ -48,9 +117,17 @@ const ImpactDashboard = () => {
     const loadData = async () => {
       try {
         setLoading(true);
+        
+        // If logged in, try to fetch user-specific data
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        
         const [summary, chart, badgesData, goal, details] = await Promise.all([
-          fetchDashboardSummary(),
-          fetchDashboardChart(),
+          token 
+            ? fetch('https://impact-dashboard-2eau.onrender.com/api/user/dashboard/summary', { headers }).then(r => r.json())
+            : fetchDashboardSummary(),
+          token
+            ? fetch('https://impact-dashboard-2eau.onrender.com/api/user/dashboard/chart', { headers }).then(r => r.json())
+            : fetchDashboardChart(),
           fetchBadges(),
           fetchMonthlyGoal(),
           fetchDashboardDetails()
@@ -534,8 +611,47 @@ const ImpactDashboard = () => {
   const renderDashboard = () => (
     <>
       <div style={styles.header}>
-        <h1 style={styles.title}>Hello, Alex! <span style={{ fontSize: '24px' }}>👋</span></h1>
-        <p style={styles.subtitle}>Here's your daily impact summary</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={styles.title}>Hello, {user?.display_name || 'User'}! <span style={{ fontSize: '24px' }}>👋</span></h1>
+            <p style={styles.subtitle}>Here's your daily impact summary</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              background: '#f3f4f6', 
+              padding: '8px 16px', 
+              borderRadius: '12px' 
+            }}>
+              <User size={18} color="#6b7280" />
+              <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                {user?.username}
+                {user?.is_demo && <span style={{ marginLeft: '6px', background: '#3b82f6', color: 'white', padding: '2px 6px', borderRadius: '4px', fontSize: '10px' }}>DEMO</span>}
+              </span>
+            </div>
+            <button
+              onClick={onLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: '#fee2e2',
+                color: '#dc2626',
+                border: 'none',
+                padding: '8px 16px',
+                borderRadius: '12px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              <LogOut size={16} />
+              Logout
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Summary Cards - Colored Backgrounds */}
@@ -615,20 +731,106 @@ const ImpactDashboard = () => {
             </div>
           </div>
 
-          {/* Eco Challenge */}
+          {/* Eco Challenge - Dynamic from 50 challenges */}
           <div style={styles.challengeCard}>
             <div style={{ position: 'relative', zIndex: 2 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ padding: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}><Zap size={24} color="#fbbf24" /></div>
-                <span style={{ fontSize: '14px', fontWeight: '600', color: '#fbbf24', letterSpacing: '0.05em' }}>DAILY ECO-CHALLENGE</span>
-                {challengeAccepted && (
-                  <span style={{ fontSize: '11px', background: '#10b981', padding: '4px 8px', borderRadius: '99px' }}>
-                    Resets at midnight
-                  </span>
-                )}
+              {/* Header with browse toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ padding: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}>
+                    <span style={{ fontSize: '24px' }}>{currentChallenge.icon}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '14px', fontWeight: '600', color: '#fbbf24', letterSpacing: '0.05em' }}>
+                      {showAllChallenges ? 'BROWSE CHALLENGES' : 'DAILY ECO-CHALLENGE'}
+                    </span>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
+                      {showAllChallenges ? `${currentChallengeIndex + 1} of ${challenges.length}` : `#${dailyChallenge.id} • ${dailyChallenge.category}`}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowAllChallenges(!showAllChallenges); }}
+                  style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'white',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {showAllChallenges ? '← Today\'s' : 'Browse All 50 →'}
+                </button>
               </div>
-              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>Go Meat-Free for Lunch</h3>
-              <p style={{ color: '#d1d5db', maxWidth: '80%' }}>Swap your usual protein for a plant-based alternative. Saves ~1.5kg CO₂ per meal.</p>
+
+              {/* Challenge navigation (only in browse mode) */}
+              {showAllChallenges && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <button onClick={prevChallenge} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: 'white' }}>
+                    <ChevronLeft size={20} />
+                  </button>
+                  <select
+                    value={challengeFilter}
+                    onChange={(e) => setChallengeFilter(e.target.value)}
+                    style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', fontSize: '13px' }}
+                  >
+                    <option value="all" style={{ color: '#1f2937' }}>All Categories</option>
+                    <option value="food" style={{ color: '#1f2937' }}>🍽️ Food & Diet</option>
+                    <option value="transport" style={{ color: '#1f2937' }}>🚗 Transportation</option>
+                    <option value="energy" style={{ color: '#1f2937' }}>⚡ Home & Energy</option>
+                    <option value="lifestyle" style={{ color: '#1f2937' }}>🌿 Lifestyle</option>
+                  </select>
+                  <button onClick={nextChallenge} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '8px', padding: '8px', cursor: 'pointer', color: 'white' }}>
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              )}
+
+              {/* Challenge content */}
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{
+                  background: currentChallenge.difficulty === 'easy' ? '#10b981' : currentChallenge.difficulty === 'medium' ? '#f59e0b' : '#ef4444',
+                  padding: '2px 8px',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  textTransform: 'uppercase'
+                }}>
+                  {currentChallenge.difficulty}
+                </span>
+              </div>
+              
+              <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px', marginTop: '8px' }}>{currentChallenge.title}</h3>
+              <p style={{ color: '#d1d5db', maxWidth: '90%', lineHeight: '1.5' }}>{currentChallenge.description}</p>
+              
+              {/* CO2 Impact Display */}
+              <div style={{ 
+                marginTop: '16px', 
+                padding: '12px', 
+                background: 'rgba(16, 185, 129, 0.15)', 
+                borderRadius: '12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px'
+              }}>
+                <Leaf size={24} color="#10b981" />
+                <div>
+                  <div style={{ fontSize: '11px', color: '#9ca3af', marginBottom: '2px' }}>POTENTIAL IMPACT</div>
+                  <div style={{ fontSize: '20px', fontWeight: '700', color: '#10b981' }}>
+                    {currentChallenge.co2Impact} {currentChallenge.unit}
+                  </div>
+                </div>
+              </div>
+
+              {/* Tips */}
+              {currentChallenge.tips && (
+                <div style={{ marginTop: '12px', fontSize: '12px', color: '#9ca3af' }}>
+                  💡 Tip: {currentChallenge.tips[Math.floor(Math.random() * currentChallenge.tips.length)]}
+                </div>
+              )}
+
               {challengeAccepted && (
                 <div style={{ 
                   marginTop: '12px', 
@@ -638,16 +840,17 @@ const ImpactDashboard = () => {
                   border: '1px solid rgba(16, 185, 129, 0.3)'
                 }}>
                   <p style={{ color: '#10b981', fontSize: '13px', margin: 0 }}>
-                    🌱 You saved <strong>1.5kg CO₂</strong> today by completing this challenge!
+                    🌱 Amazing! You saved <strong>{currentChallenge.co2Impact} {currentChallenge.unit}</strong> by completing this challenge!
                   </p>
                 </div>
               )}
+              
               <button
                 style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981', marginTop: '16px' }}
                 onClick={handleChallengeClick}
               >
                 {challengeAccepted ? <CheckCircle size={20} /> : null}
-                {challengeAccepted ? 'Challenge Accepted!' : 'Accept Challenge'}
+                {challengeAccepted ? 'Challenge Completed!' : 'Accept Challenge'}
               </button>
             </div>
             <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1 }}>
@@ -837,4 +1040,4 @@ const ImpactDashboard = () => {
   );
 };
 
-export default ImpactDashboard;
+export default App;
