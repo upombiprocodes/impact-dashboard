@@ -513,11 +513,29 @@ const ImpactDashboard = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                 <div style={{ padding: '8px', background: 'rgba(255,255,255,0.2)', borderRadius: '12px' }}><Zap size={24} color="#fbbf24" /></div>
                 <span style={{ fontSize: '14px', fontWeight: '600', color: '#fbbf24', letterSpacing: '0.05em' }}>DAILY ECO-CHALLENGE</span>
+                {challengeAccepted && (
+                  <span style={{ fontSize: '11px', background: '#10b981', padding: '4px 8px', borderRadius: '99px' }}>
+                    Resets at midnight
+                  </span>
+                )}
               </div>
               <h3 style={{ fontSize: '24px', fontWeight: '700', marginBottom: '8px' }}>Go Meat-Free for Lunch</h3>
               <p style={{ color: '#d1d5db', maxWidth: '80%' }}>Swap your usual protein for a plant-based alternative. Saves ~1.5kg CO₂ per meal.</p>
+              {challengeAccepted && (
+                <div style={{ 
+                  marginTop: '12px', 
+                  padding: '12px', 
+                  background: 'rgba(16, 185, 129, 0.2)', 
+                  borderRadius: '12px',
+                  border: '1px solid rgba(16, 185, 129, 0.3)'
+                }}>
+                  <p style={{ color: '#10b981', fontSize: '13px', margin: 0 }}>
+                    🌱 You saved <strong>1.5kg CO₂</strong> today by completing this challenge!
+                  </p>
+                </div>
+              )}
               <button
-                style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981' }}
+                style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981', marginTop: '16px' }}
                 onClick={handleChallengeClick}
               >
                 {challengeAccepted ? <CheckCircle size={20} /> : null}
@@ -546,51 +564,116 @@ const ImpactDashboard = () => {
                 <div style={{ padding: '10px', background: '#eff6ff', borderRadius: '12px', color: '#3b82f6' }}><Target size={20} /></div>
                 <div>
                   <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Monthly Goal</h3>
-                  <p style={{ fontSize: '12px', color: '#6b7280' }}>{monthlyGoal.daysLeft} days left</p>
+                  <p style={{ fontSize: '12px', color: '#6b7280' }}>{monthlyGoal.daysLeft} days left this month</p>
                 </div>
               </div>
             </div>
             <div style={{ marginBottom: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontWeight: '700', color: '#1f2937' }}>{monthlyGoal.current}kg</span>
-                <span style={{ fontSize: '12px', color: '#6b7280' }}>/ {monthlyGoal.target}kg</span>
+                <span style={{ fontWeight: '700', color: '#1f2937' }}>{monthlyGoal.current}kg saved</span>
+                <span style={{ fontSize: '12px', color: '#6b7280' }}>/ {monthlyGoal.target}kg target</span>
               </div>
               <div style={{ height: '8px', background: '#f3f4f6', borderRadius: '99px', overflow: 'hidden' }}>
-                <div style={{ ...styles.progressBar, width: `${(monthlyGoal.current / monthlyGoal.target) * 100}%` }}></div>
+                <div style={{ ...styles.progressBar, width: `${Math.min((monthlyGoal.current / monthlyGoal.target) * 100, 100)}%` }}></div>
               </div>
+              <p style={{ fontSize: '11px', color: '#6b7280', marginTop: '8px' }}>
+                {monthlyGoal.current >= monthlyGoal.target 
+                  ? '🎉 Goal achieved!' 
+                  : `${monthlyGoal.target - monthlyGoal.current}kg more to reach your goal`}
+              </p>
             </div>
             {expandedCard === 'goal' && renderExpandedContent('goal')}
           </div>
 
-          {/* Achievements - Individual Expansion */}
+          {/* Achievements - With Progress Bars */}
           <div style={styles.rightCard}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ padding: '10px', background: '#fffbeb', borderRadius: '12px', color: '#f59e0b' }}><Trophy size={20} /></div>
               <div>
                 <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>Achievements</h3>
-                <p style={{ fontSize: '12px', color: '#6b7280' }}>{unlockedCount} unlocked</p>
+                <p style={{ fontSize: '12px', color: '#6b7280' }}>{unlockedCount} of {badges.length} unlocked</p>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {badges.slice(0, 4).map(b => (
-                <div
-                  key={b.id}
-                  style={{
-                    ...styles.badgeItem,
-                    ...(expandedBadge === b.id ? styles.badgeExpanded : {})
-                  }}
-                  onClick={() => setExpandedBadge(expandedBadge === b.id ? null : b.id)}
-                >
-                  <div style={{ fontSize: '20px', opacity: b.unlocked ? 1 : 0.3 }}>{b.icon}</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '600', color: '#1f2937' }}>{b.name}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {badges.map(b => {
+                // Calculate progress for each badge
+                const totalSaved = chartData.reduce((sum, week) => sum + week.saved, 0);
+                let progress = 0;
+                let progressTarget = '';
+                
+                if (b.name === 'Carbon Crusher') {
+                  progress = Math.min((totalSaved / 100) * 100, 100);
+                  progressTarget = `${Math.min(totalSaved, 100)}/100kg`;
+                } else if (b.name === 'Plant Pioneer') {
+                  progress = Math.min((totalSaved / 200) * 100, 100);
+                  progressTarget = `${Math.min(totalSaved, 200)}/200kg`;
+                } else if (b.name === 'Hot Streak') {
+                  progress = Math.min((summaryData.streak / 30) * 100, 100);
+                  progressTarget = `${Math.min(summaryData.streak, 30)}/30 days`;
+                } else if (b.name === 'Climate Champ') {
+                  progress = Math.min((summaryData.streak / 90) * 100, 100);
+                  progressTarget = `${Math.min(summaryData.streak, 90)}/90 days`;
+                } else {
+                  progress = b.unlocked ? 100 : 0;
+                }
+                
+                return (
+                  <div
+                    key={b.id}
+                    style={{
+                      ...styles.badgeItem,
+                      flexDirection: 'column',
+                      alignItems: 'stretch',
+                      ...(expandedBadge === b.id ? styles.badgeExpanded : {})
+                    }}
+                    onClick={() => setExpandedBadge(expandedBadge === b.id ? null : b.id)}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{ fontSize: '20px', opacity: b.unlocked ? 1 : 0.4 }}>{b.icon}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '13px', fontWeight: '600', color: b.unlocked ? '#1f2937' : '#9ca3af' }}>{b.name}</div>
+                      </div>
+                      {b.unlocked ? (
+                        <CheckCircle size={16} color="#10b981" />
+                      ) : (
+                        <span style={{ fontSize: '11px', color: '#6b7280' }}>{progressTarget}</span>
+                      )}
+                    </div>
+                    
+                    {/* Progress bar for incomplete badges */}
+                    {!b.unlocked && (
+                      <div style={{ marginTop: '8px' }}>
+                        <div style={{ height: '4px', background: 'rgba(0,0,0,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+                          <div style={{ 
+                            height: '100%', 
+                            background: 'linear-gradient(90deg, #10b981, #34d399)', 
+                            borderRadius: '99px',
+                            width: `${progress}%`,
+                            transition: 'width 0.5s ease'
+                          }}></div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Expanded description */}
                     {expandedBadge === b.id && (
-                      <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px' }}>{b.description}</div>
+                      <div style={{ 
+                        marginTop: '10px', 
+                        padding: '10px', 
+                        background: b.unlocked ? '#ecfdf5' : '#f9fafb', 
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        color: '#4b5563'
+                      }}>
+                        <p style={{ margin: 0 }}>{b.description}</p>
+                        {b.unlocked && (
+                          <p style={{ margin: '8px 0 0 0', color: '#10b981', fontWeight: '600' }}>✓ Completed!</p>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {b.unlocked && <CheckCircle size={14} color="#10b981" />}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
