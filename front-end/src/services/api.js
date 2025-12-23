@@ -1,4 +1,5 @@
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
+// Use deployed backend URL directly for production
+const API_URL = 'https://impact-dashboard-2eau.onrender.com/api';
 
 export const fetchDashboardSummary = async () => {
     try {
