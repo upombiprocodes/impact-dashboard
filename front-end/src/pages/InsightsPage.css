@@ -1,0 +1,146 @@
+.insights-container {
+    font-family: 'Inter', sans-serif;
+    width: 100%;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.page-header p {
+    color: #6B7280;
+    margin-bottom: 2rem;
+}
+
+.insights-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .insights-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-card {
+    grid-column: span 2;
+}
+
+.calendar-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1rem;
+    gap: 10px;
+    overflow-x: auto;
+}
+
+.day-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 12px;
+    min-width: 80px;
+    border: 2px solid transparent;
+    transition: transform 0.2s;
+}
+
+.day-box:hover {
+    transform: translateY(-2px);
+}
+
+.day-box.high {
+    background-color: #FEF2F2;
+    border-color: #FECACA;
+    color: #DC2626;
+}
+
+.day-box.low {
+    background-color: #ECFDF5;
+    border-color: #A7F3D0;
+    color: #059669;
+}
+
+.day-name {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.tip-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1rem;
+}
+
+.icon-badge {
+    font-size: 1.5rem;
+    background: #FEF3C7;
+    padding: 8px;
+    border-radius: 12px;
+}
+
+.tip-body {
+    background: #F9FAFB;
+    padding: 1rem;
+    border-radius: 12px;
+}
+
+.habit-alert {
+    color: #B45309;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.tip-text {
+    font-weight: 500;
+    color: #1F2937;
+    margin-bottom: 1rem;
+}
+
+.action-btn {
+    background: #10B981;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.seasonal-card h3 {
+    color: #065F46;
+    margin-bottom: 1rem;
+}
+
+.veg-list {
+    list-style: none;
+    padding: 0;
+}
+
+.veg-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.tag {
+    background: #D1FAE5;
+    color: #065F46;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-size: 0.8rem;
+}
