@@ -13,11 +13,14 @@ app = FastAPI()
 # Configure CORS
 origins = [
     "http://localhost:3000",
+    "https://impact-dashboard-mfpd.vercel.app",
+    "https://impact-dashboard-s6jh.vercel.app",
+    "https://impact-dashboard.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Allow all origins for now
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
