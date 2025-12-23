@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails } from './services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { TrendingDown, TrendingUp, Award, Flame, Target, Leaf, Trophy, Star, Calendar, Activity, Zap, LayoutDashboard, Search, Utensils, Lightbulb, Users, CheckCircle, Droplets, Mountain, ArrowRight } from 'lucide-react';
+import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircle, Droplets, Mountain, ArrowRight, Star, Trophy, Zap, Target } from 'lucide-react';
 
 const ImpactDashboard = () => {
   const [timeRange, setTimeRange] = useState('8weeks');
   const [expandedCard, setExpandedCard] = useState(null);
-  const [activeNav, setActiveNav] = useState('dashboard');
   const [challengeAccepted, setChallengeAccepted] = useState(false);
   const [expandedBadge, setExpandedBadge] = useState(null);
 
@@ -36,39 +35,22 @@ const ImpactDashboard = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        // Mock data loading
-        setSummaryData({
-          co2Emitted: 12.5,
-          co2Saved: 4.2,
-          streak: 5,
-          badgesUnlocked: 3,
-          totalBadges: 8,
-          percentChange: -12
-        });
-        setChartData([
-          { week: 'W1', footprint: 14, saved: 2 },
-          { week: 'W2', footprint: 13, saved: 3 },
-          { week: 'W3', footprint: 12, saved: 4 },
-          { week: 'W4', footprint: 11, saved: 5 },
-          { week: 'W5', footprint: 12, saved: 4 },
-          { week: 'W6', footprint: 10, saved: 6 },
-          { week: 'W7', footprint: 9, saved: 7 },
-          { week: 'W8', footprint: 8, saved: 8 }
+        
+        // Fetch real data from backend API
+        const [summary, chart, badgesData, goal, details] = await Promise.all([
+          fetchDashboardSummary(),
+          fetchDashboardChart(),
+          fetchBadges(),
+          fetchMonthlyGoal(),
+          fetchDashboardDetails()
         ]);
-        setBadges([
-          { id: 1, name: 'Eco Starter', description: 'Saved your first 1kg of CO2', icon: '🌱', unlocked: true },
-          { id: 2, name: 'Streak Master', description: '7 day streak', icon: '🔥', unlocked: true },
-          { id: 3, name: 'Meat Free', description: 'No meat for a week', icon: '🥗', unlocked: true },
-          { id: 4, name: 'Car Free', description: 'Walked/Cycled 50km', icon: '🚲', unlocked: false }
-        ]);
-        setMonthlyGoal({ target: 50, current: 32, daysLeft: 12 });
-        setDetailsData({
-          emitted: [{ d: 'Mon', v: 2.1 }, { d: 'Tue', v: 1.8 }, { d: 'Wed', v: 2.4 }, { d: 'Thu', v: 1.9 }, { d: 'Fri', v: 2.2 }, { d: 'Sat', v: 1.1 }, { d: 'Sun', v: 1.0 }],
-          saved: [{ n: 'Cycled to work', v: '0.8kg' }, { n: 'Veggie lunch', v: '1.2kg' }, { n: 'Recycled', v: '0.3kg' }],
-          streak: [true, true, true, true, true, false, false],
-          contributions: [{ d: 'Today', v: '2.3kg' }, { d: 'Yesterday', v: '1.9kg' }, { d: 'Nov 24', v: '3.1kg' }],
-          impact: [{ label: 'Trees Planted', value: '3' }, { label: 'Miles Driven Avoided', value: '42' }]
-        });
+        
+        setSummaryData(summary);
+        setChartData(chart);
+        setBadges(badgesData);
+        setMonthlyGoal(goal);
+        setDetailsData(details);
+        
         setLoading(false);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
@@ -620,62 +602,20 @@ const ImpactDashboard = () => {
     </>
   );
 
-  const renderContent = () => {
-    switch (activeNav) {
-      case 'dashboard':
-        return renderDashboard();
-      case 'food':
-        return renderPlaceholder('Food Search');
-      case 'meal':
-        return renderPlaceholder('Meal Planner');
-      case 'insight':
-        return renderPlaceholder('Insights');
-      case 'community':
-        return renderPlaceholder('Community');
-      default:
-        return renderDashboard();
-    }
-  };
-
-  const renderPlaceholder = (title) => (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      height: '100%',
-      color: '#6b7280'
-    }}>
-      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
-      <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1f2937', marginBottom: '8px' }}>{title || 'Member Page'}</h2>
-      <p>This section is under construction by other group members.</p>
-    </div>
-  );
-
   return (
     <div style={styles.container}>
-      {/* Navigation Sidebar */}
+      {/* Logo Sidebar */}
       <div style={styles.sidebarNav}>
-        <div style={{ marginBottom: '20px' }}><Leaf color="#10b981" size={32} /></div>
-        {[
-          { id: 'dashboard', icon: <LayoutDashboard size={24} /> },
-          { id: 'food', icon: <Search size={24} /> },
-          { id: 'meal', icon: <Utensils size={24} /> },
-          { id: 'insight', icon: <Lightbulb size={24} /> },
-          { id: 'community', icon: <Users size={24} /> }
-        ].map(item => (
-          <div
-            key={item.id}
-            style={{ ...styles.navItem, ...(activeNav === item.id ? styles.navItemActive : {}) }}
-            onClick={() => setActiveNav(item.id)}
-          >
-            {item.icon}
-          </div>
-        ))}
+        <div><Leaf color="#10b981" size={32} /></div>
+        <div
+          style={{ ...styles.navItem, ...styles.navItemActive }}
+        >
+          <LayoutDashboard size={24} />
+        </div>
       </div>
 
       <div style={styles.mainContent}>
-        {renderContent()}
+        {renderDashboard()}
       </div>
     </div>
   );

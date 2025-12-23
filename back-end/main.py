@@ -138,3 +138,109 @@ def get_dashboard_details(db: Session = Depends(get_db)):
         "contributions": contributions,
         "impact": impact
     }
+
+# ============ FOOD API ============
+
+class FoodResponse(BaseModel):
+    id: int
+    name: str
+    category: str
+    is_veg: bool
+    protein: float
+    co2_per_100g: float
+    rating: str
+    origin: str
+    notes: str
+    class Config:
+        from_attributes = True
+
+class LogFoodRequest(BaseModel):
+    food_id: int
+    quantity_grams: float
+
+class LogFoodResponse(BaseModel):
+    id: int
+    food_name: str
+    quantity_grams: float
+    co2_impact: float
+    logged_at: str
+
+@app.get("/api/foods", response_model=List[FoodResponse])
+def get_foods(
+    category: Optional[str] = None,
+    is_veg: Optional[bool] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all foods with optional filters"""
+    query = db.query(models.Food)
+    
+    if category and category != "all":
+        query = query.filter(models.Food.category == category)
+    if is_veg is not None:
+        query = query.filter(models.Food.is_veg == is_veg)
+    if search:
+        query = query.filter(models.Food.name.ilike(f"%{search}%"))
+    
+    return query.all()
+
+@app.get("/api/foods/categories")
+def get_food_categories(db: Session = Depends(get_db)):
+    """Get unique food categories"""
+    categories = db.query(models.Food.category).distinct().all()
+    return ["all"] + [c[0] for c in categories]
+
+@app.get("/api/foods/{food_id}", response_model=FoodResponse)
+def get_food(food_id: int, db: Session = Depends(get_db)):
+    """Get a specific food by ID"""
+    food = db.query(models.Food).filter(models.Food.id == food_id).first()
+    if not food:
+        raise HTTPException(status_code=404, detail="Food not found")
+    return food
+
+@app.post("/api/log-food", response_model=LogFoodResponse)
+def log_food(request: LogFoodRequest, db: Session = Depends(get_db)):
+    """Log food consumption and calculate CO2 impact"""
+    from datetime import datetime
+    
+    food = db.query(models.Food).filter(models.Food.id == request.food_id).first()
+    if not food:
+        raise HTTPException(status_code=404, detail="Food not found")
+    
+    # Calculate CO2 impact (per 100g scaled to quantity)
+    co2_impact = (food.co2_per_100g * request.quantity_grams) / 100
+    
+    # Create log entry
+    log_entry = models.ActivityLog(
+        food_id=request.food_id,
+        quantity_grams=request.quantity_grams,
+        co2_impact=round(co2_impact, 2),
+        logged_at=datetime.now().isoformat()
+    )
+    db.add(log_entry)
+    db.commit()
+    db.refresh(log_entry)
+    
+    return {
+        "id": log_entry.id,
+        "food_name": food.name,
+        "quantity_grams": request.quantity_grams,
+        "co2_impact": round(co2_impact, 2),
+        "logged_at": log_entry.logged_at
+    }
+
+@app.get("/api/activity-logs")
+def get_activity_logs(limit: int = 10, db: Session = Depends(get_db)):
+    """Get recent activity logs"""
+    logs = db.query(models.ActivityLog).order_by(models.ActivityLog.id.desc()).limit(limit).all()
+    result = []
+    for log in logs:
+        food = db.query(models.Food).filter(models.Food.id == log.food_id).first()
+        result.append({
+            "id": log.id,
+            "food_name": food.name if food else "Unknown",
+            "quantity_grams": log.quantity_grams,
+            "co2_impact": log.co2_impact,
+            "logged_at": log.logged_at
+        })
+    return result

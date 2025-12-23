@@ -1,0 +1,10 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
+healthcheckPath = "/api/dashboard/summary"
+restartPolicyType = "ON_FAILURE"
+
+[[services]]
+name = "impact-dashboard-api"

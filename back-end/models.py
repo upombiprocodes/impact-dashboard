@@ -69,3 +69,25 @@ class ImpactDetail(Base):
     id = Column(Integer, primary_key=True, index=True)
     label = Column(String)
     value = Column(String)
+
+# Food Database
+class Food(Base):
+    __tablename__ = "foods"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    category = Column(String, index=True)
+    is_veg = Column(Boolean, default=False)
+    protein = Column(Float)
+    co2_per_100g = Column(Float)
+    rating = Column(String)  # A, B, C, D, E, F
+    origin = Column(String)
+    notes = Column(String)
+
+# Activity/Food Logging
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    food_id = Column(Integer, ForeignKey("foods.id"))
+    quantity_grams = Column(Float)
+    co2_impact = Column(Float)
+    logged_at = Column(String)  # ISO date string
