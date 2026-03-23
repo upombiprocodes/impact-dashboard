@@ -14,7 +14,7 @@ const LoginPage = ({ onLogin }) => {
     displayName: ''
   });
 
-  const API_URL = 'https://impact-dashboard-2eau.onrender.com';
+  const API_URL = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace('/api', '') : 'http://127.0.0.1:8080';
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });

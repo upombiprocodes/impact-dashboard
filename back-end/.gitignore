@@ -1,0 +1,29 @@
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+
+# H2 Database file
+data/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.project
+.classpath
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Maven Wrapper
+!.mvn/wrapper/maven-wrapper.jar
+
+# Old Python files (can be removed after migration is verified)
+__pycache__/
+*.pyc
+*.db
+sql_app.db

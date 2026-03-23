@@ -36,19 +36,8 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
   const [timeRange, setTimeRange] = useState('8weeks');
   const [expandedCard, setExpandedCard] = useState(null);
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0);
-  const [challengeAccepted, setChallengeAccepted] = useState(() => {
-    const saved = localStorage.getItem(`challenge_${user?.id}_accepted`);
-    const savedDate = localStorage.getItem(`challenge_${user?.id}_date`);
-    const savedIndex = localStorage.getItem(`challenge_${user?.id}_index`);
-    const today = new Date().toDateString();
-    if (savedDate !== today) {
-      localStorage.removeItem(`challenge_${user?.id}_accepted`);
-      localStorage.removeItem(`challenge_${user?.id}_index`);
-      return false;
-    }
-    if (savedIndex) setCurrentChallengeIndex(parseInt(savedIndex));
-    return saved === 'true';
-  });
+  const [completedChallengeIds, setCompletedChallengeIds] = useState(new Set());
+  const [challengeLoading, setChallengeLoading] = useState(false);
   const [expandedBadge, setExpandedBadge] = useState(null);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [challengeFilter, setChallengeFilter] = useState('all');
@@ -57,36 +46,84 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
   const dailyChallenge = useMemo(() => getDailyChallenge(), []);
   const currentChallenge = showAllChallenges ? challenges[currentChallengeIndex] : dailyChallenge;
 
-  const handleChallengeClick = async () => {
-    const newState = !challengeAccepted;
-    setChallengeAccepted(newState);
-    localStorage.setItem(`challenge_${user?.id}_accepted`, newState.toString());
-    localStorage.setItem(`challenge_${user?.id}_date`, new Date().toDateString());
-    localStorage.setItem(`challenge_${user?.id}_index`, currentChallengeIndex.toString());
+  // Derive whether the current challenge is completed from the persistent set
+  const challengeAccepted = completedChallengeIds.has(currentChallenge?.id);
 
-    // If completing challenge and logged in, notify backend
-    if (newState && token) {
+  // Fetch today's completed challenges from backend on mount
+  useEffect(() => {
+    const fetchTodayCompletions = async () => {
+      if (!token) return;
       try {
-        await fetch(`https://impact-dashboard-2eau.onrender.com/api/user/challenges/${currentChallenge.id}/complete?co2_saved=${currentChallenge.co2Impact}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        const res = await fetch('http://127.0.0.1:8080/api/user/challenges/today', {
+          headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (res.ok) {
+          const data = await res.json();
+          setCompletedChallengeIds(new Set(data.completed_challenge_ids));
+        }
       } catch (err) {
-        console.error('Failed to record challenge completion:', err);
+        console.error('Failed to fetch today completions:', err);
       }
+    };
+    fetchTodayCompletions();
+  }, [token]);
+
+  // Helper to reload dashboard data after a challenge is completed
+  const reloadDashboardData = async () => {
+    try {
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+      const [summary, chart] = await Promise.all([
+        token
+          ? fetch('http://127.0.0.1:8080/api/user/dashboard/summary', { headers }).then(r => r.json())
+          : fetchDashboardSummary(),
+        token
+          ? fetch('http://127.0.0.1:8080/api/user/dashboard/chart', { headers }).then(r => r.json())
+          : fetchDashboardChart(),
+      ]);
+      setSummaryData(summary);
+      setChartData(chart);
+    } catch (err) {
+      console.error('Failed to reload dashboard data:', err);
+    }
+  };
+
+  const handleChallengeClick = async () => {
+    // If already completed, do nothing (no toggling back)
+    if (challengeAccepted || challengeLoading) return;
+
+    if (!token) return;
+
+    setChallengeLoading(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:8080/api/user/challenges/${currentChallenge.id}/complete?co2_saved=${currentChallenge.co2Impact}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (res.ok) {
+        // Mark this challenge as completed in our persistent set
+        setCompletedChallengeIds(prev => new Set([...prev, currentChallenge.id]));
+        // Refresh dashboard stats so the saved CO2 is reflected immediately
+        await reloadDashboardData();
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error('Challenge completion failed:', errData.detail || res.statusText);
+      }
+    } catch (err) {
+      console.error('Failed to record challenge completion:', err);
+    } finally {
+      setChallengeLoading(false);
     }
   };
 
   const nextChallenge = () => {
-    setChallengeAccepted(false);
     setCurrentChallengeIndex((prev) => (prev + 1) % challenges.length);
   };
 
   const prevChallenge = () => {
-    setChallengeAccepted(false);
     setCurrentChallengeIndex((prev) => (prev - 1 + challenges.length) % challenges.length);
   };
 
@@ -123,14 +160,16 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
         
         const [summary, chart, badgesData, goal, details] = await Promise.all([
           token 
-            ? fetch('https://impact-dashboard-2eau.onrender.com/api/user/dashboard/summary', { headers }).then(r => r.json())
+            ? fetch('http://127.0.0.1:8080/api/user/dashboard/summary', { headers }).then(r => r.json())
             : fetchDashboardSummary(),
           token
-            ? fetch('https://impact-dashboard-2eau.onrender.com/api/user/dashboard/chart', { headers }).then(r => r.json())
+            ? fetch('http://127.0.0.1:8080/api/user/dashboard/chart', { headers }).then(r => r.json())
             : fetchDashboardChart(),
           fetchBadges(),
           fetchMonthlyGoal(),
-          fetchDashboardDetails()
+          token
+            ? fetch('http://127.0.0.1:8080/api/user/dashboard/details', { headers }).then(r => r.json())
+            : fetchDashboardDetails()
         ]);
         
         setSummaryData(summary);
@@ -150,10 +189,12 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
 
   // ============ ALL DYNAMIC CALCULATIONS ============
   
-  // Calculate total CO2 saved from chart data
+  // Calculate total CO2 saved - use API summary as source of truth, supplemented by chart data
   const totalSaved = useMemo(() => {
-    return chartData.reduce((sum, week) => sum + (week.saved || 0), 0);
-  }, [chartData]);
+    const chartTotal = chartData.reduce((sum, week) => sum + (week.saved || 0), 0);
+    const summaryTotal = summaryData.co2Saved || 0;
+    return Math.max(chartTotal, summaryTotal);
+  }, [chartData, summaryData.co2Saved]);
 
   // Calculate days left in current month
   const daysLeftInMonth = useMemo(() => {
@@ -860,11 +901,18 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
               )}
               
               <button
-                style={{ ...styles.challengeBtn, background: challengeAccepted ? '#374151' : '#10b981', marginTop: '16px' }}
+                style={{ 
+                  ...styles.challengeBtn, 
+                  background: challengeAccepted ? '#374151' : '#10b981', 
+                  marginTop: '16px',
+                  opacity: challengeAccepted || challengeLoading ? 0.8 : 1,
+                  cursor: challengeAccepted ? 'default' : 'pointer'
+                }}
                 onClick={handleChallengeClick}
+                disabled={challengeAccepted || challengeLoading}
               >
                 {challengeAccepted ? <CheckCircle size={20} /> : null}
-                {challengeAccepted ? 'Challenge Completed!' : 'Accept Challenge'}
+                {challengeLoading ? 'Saving...' : challengeAccepted ? 'Challenge Completed! ✅' : 'Accept Challenge'}
               </button>
             </div>
             <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1 }}>

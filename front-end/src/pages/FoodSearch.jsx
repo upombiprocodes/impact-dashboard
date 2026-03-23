@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8080/api';
 
 function getRatingColor(rating) {
     if (rating === "A" || rating === "B") return "#10B981";
@@ -18,6 +18,9 @@ export default function FoodSearch() {
     const [loading, setLoading] = useState(true);
     const [logQuantity, setLogQuantity] = useState(100);
     const [logMessage, setLogMessage] = useState(null);
+
+    // Get auth token for user-specific logging
+    const token = localStorage.getItem('token');
 
     // Fetch foods from backend
     useEffect(() => {
@@ -55,9 +58,13 @@ export default function FoodSearch() {
     // Log food consumption
     const handleLogFood = async (food) => {
         try {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
             const response = await fetch(`${API_URL}/log-food`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify({
                     food_id: food.id,
                     quantity_grams: logQuantity
