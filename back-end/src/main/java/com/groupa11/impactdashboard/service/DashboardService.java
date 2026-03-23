@@ -173,11 +173,22 @@ public class DashboardService {
         int streak = 0;
         if (!completions.isEmpty()) {
             LocalDate today = LocalDate.now(ZoneOffset.UTC);
-            for (int i = 0; i < completions.size(); i++) {
-                LocalDate cDate = completions.get(i).getCompletedAt()
-                        .atZone(ZoneOffset.UTC).toLocalDate();
-                if (Duration.between(cDate.atStartOfDay(), today.atStartOfDay()).toDays() <= i + 1) {
+            List<LocalDate> uniqueDates = completions.stream()
+                    .map(c -> c.getCompletedAt().atZone(ZoneOffset.UTC).toLocalDate())
+                    .distinct()
+                    .sorted(Comparator.reverseOrder())
+                    .collect(Collectors.toList());
+                    
+            LocalDate expectedDate = today;
+            // If the user hasn't completed anything today yet, but did yesterday, the streak is alive
+            if (!uniqueDates.isEmpty() && uniqueDates.get(0).equals(today.minusDays(1))) {
+                expectedDate = today.minusDays(1);
+            }
+            
+            for (LocalDate date : uniqueDates) {
+                if (date.equals(expectedDate)) {
                     streak++;
+                    expectedDate = expectedDate.minusDays(1);
                 } else {
                     break;
                 }
