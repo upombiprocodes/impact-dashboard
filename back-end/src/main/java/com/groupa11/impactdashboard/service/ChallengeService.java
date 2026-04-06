@@ -3,6 +3,7 @@ package com.groupa11.impactdashboard.service;
 import com.groupa11.impactdashboard.model.ChallengeCompletion;
 import com.groupa11.impactdashboard.model.UserWeeklyData;
 import com.groupa11.impactdashboard.repository.ChallengeCompletionRepository;
+import com.groupa11.impactdashboard.repository.ChallengeRepository;
 import com.groupa11.impactdashboard.repository.UserWeeklyDataRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -19,14 +20,17 @@ public class ChallengeService {
 
     private final ChallengeCompletionRepository completionRepository;
     private final UserWeeklyDataRepository weeklyDataRepository;
+    private final ChallengeRepository challengeRepository;
 
     public ChallengeService(ChallengeCompletionRepository completionRepository,
-                            UserWeeklyDataRepository weeklyDataRepository) {
+                            UserWeeklyDataRepository weeklyDataRepository,
+                            ChallengeRepository challengeRepository) {
         this.completionRepository = completionRepository;
         this.weeklyDataRepository = weeklyDataRepository;
+        this.challengeRepository = challengeRepository;
     }
 
-    public Map<String, Object> completeChallenge(Long userId, int challengeId, double co2Saved) {
+    public Map<String, Object> completeChallenge(Long userId, int challengeId) {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
 
         // Check if already completed today
@@ -39,20 +43,25 @@ public class ChallengeService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Challenge already completed today");
         }
 
-        ChallengeCompletion completion = new ChallengeCompletion(userId, challengeId, Instant.now(), co2Saved);
+        // Fetch the challenge from DB to get verified co2Impact
+        com.groupa11.impactdashboard.model.Challenge challenge = challengeRepository.findById((long) challengeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Challenge not found"));
+        double verifiedCo2Saved = challenge.getCo2Impact();
+
+        ChallengeCompletion completion = new ChallengeCompletion(userId, challengeId, Instant.now(), verifiedCo2Saved);
         completionRepository.save(completion);
 
         // Update user's weekly saved
         List<UserWeeklyData> weeks = weeklyDataRepository.findByUserIdOrderByIdAsc(userId);
         if (!weeks.isEmpty()) {
             UserWeeklyData lastWeek = weeks.get(weeks.size() - 1);
-            lastWeek.setSaved(lastWeek.getSaved() + (int) Math.round(co2Saved));
+            lastWeek.setSaved(lastWeek.getSaved() + (int) Math.round(verifiedCo2Saved));
             weeklyDataRepository.save(lastWeek);
         }
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("message", "Challenge completed!");
-        result.put("co2_saved", co2Saved);
+        result.put("co2_saved", verifiedCo2Saved);
         return result;
     }
 

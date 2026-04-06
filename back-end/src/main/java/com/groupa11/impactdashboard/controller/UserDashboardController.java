@@ -44,10 +44,9 @@ public class UserDashboardController {
     @PostMapping("/challenges/{challengeId}/complete")
     public Map<String, Object> completeChallenge(
             @PathVariable int challengeId,
-            @RequestParam("co2_saved") double co2Saved,
             HttpServletRequest request) {
         Long userId = requireAuth(request);
-        return challengeService.completeChallenge(userId, challengeId, co2Saved);
+        return challengeService.completeChallenge(userId, challengeId);
     }
 
     @GetMapping("/challenges/history")

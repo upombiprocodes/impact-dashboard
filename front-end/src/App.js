@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails } from './services/api';
+import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails, fetchChallenges, fetchDailyChallenge } from './services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircle, Droplets, Mountain, ArrowRight, Star, Trophy, Zap, Target, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import LoginPage from './pages/LoginPage';
-import { challenges, getDailyChallenge, getChallengesByCategory } from './data/challenges';
 
 // Main App Component with Auth
 const App = () => {
@@ -37,17 +36,28 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
   const [expandedCard, setExpandedCard] = useState(null);
   const [currentChallengeIndex, setCurrentChallengeIndex] = useState(0);
   const [completedChallengeIds, setCompletedChallengeIds] = useState(new Set());
+  const [startedChallengeIds, setStartedChallengeIds] = useState(() => {
+    const saved = localStorage.getItem(token ? `started_${user?.id}` : 'started');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  useEffect(() => {
+    localStorage.setItem(token ? `started_${user?.id}` : 'started', JSON.stringify([...startedChallengeIds]));
+  }, [startedChallengeIds, user, token]);
   const [challengeLoading, setChallengeLoading] = useState(false);
   const [expandedBadge, setExpandedBadge] = useState(null);
   const [showAllChallenges, setShowAllChallenges] = useState(false);
   const [challengeFilter, setChallengeFilter] = useState('all');
 
+  const [allChallenges, setAllChallenges] = useState([]);
+  const [dailyChallenge, setDailyChallenge] = useState(null);
+
   // Get daily challenge or selected challenge
-  const dailyChallenge = useMemo(() => getDailyChallenge(), []);
-  const currentChallenge = showAllChallenges ? challenges[currentChallengeIndex] : dailyChallenge;
+  const currentChallenge = showAllChallenges && allChallenges.length > 0 ? allChallenges[currentChallengeIndex] : dailyChallenge;
 
   // Derive whether the current challenge is completed from the persistent set
   const challengeAccepted = completedChallengeIds.has(currentChallenge?.id);
+  const challengeStarted = startedChallengeIds.has(currentChallenge?.id);
 
   // Fetch today's completed challenges from backend on mount
   useEffect(() => {
@@ -87,6 +97,11 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
     }
   };
 
+  const handleStartChallenge = () => {
+    if (!token || challengeAccepted) return;
+    setStartedChallengeIds(prev => new Set([...prev, currentChallenge.id]));
+  };
+
   const handleChallengeClick = async () => {
     // If already completed, do nothing (no toggling back)
     if (challengeAccepted || challengeLoading) return;
@@ -95,7 +110,7 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
 
     setChallengeLoading(true);
     try {
-      const res = await fetch(`http://127.0.0.1:8080/api/user/challenges/${currentChallenge.id}/complete?co2_saved=${currentChallenge.co2Impact}`, {
+      const res = await fetch(`http://127.0.0.1:8080/api/user/challenges/${currentChallenge.id}/complete`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -120,16 +135,20 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
   };
 
   const nextChallenge = () => {
-    setCurrentChallengeIndex((prev) => (prev + 1) % challenges.length);
+    if (allChallenges.length > 0) {
+      setCurrentChallengeIndex((prev) => (prev + 1) % allChallenges.length);
+    }
   };
 
   const prevChallenge = () => {
-    setCurrentChallengeIndex((prev) => (prev - 1 + challenges.length) % challenges.length);
+    if (allChallenges.length > 0) {
+      setCurrentChallengeIndex((prev) => (prev - 1 + allChallenges.length) % allChallenges.length);
+    }
   };
 
   const filteredChallenges = useMemo(() => {
-    return getChallengesByCategory(challengeFilter);
-  }, [challengeFilter]);
+    return challengeFilter === 'all' ? allChallenges : allChallenges.filter(c => c.category === challengeFilter);
+  }, [challengeFilter, allChallenges]);
 
   const [summaryData, setSummaryData] = useState({
     co2Emitted: 0,
@@ -158,7 +177,7 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
         // If logged in, try to fetch user-specific data
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
         
-        const [summary, chart, badgesData, goal, details] = await Promise.all([
+        const [summary, chart, badgesData, goal, details, fetchedChallenges, fetchedDailyChallenge] = await Promise.all([
           token 
             ? fetch('http://127.0.0.1:8080/api/user/dashboard/summary', { headers }).then(r => r.json())
             : fetchDashboardSummary(),
@@ -169,8 +188,13 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
           fetchMonthlyGoal(),
           token
             ? fetch('http://127.0.0.1:8080/api/user/dashboard/details', { headers }).then(r => r.json())
-            : fetchDashboardDetails()
+            : fetchDashboardDetails(),
+          fetchChallenges(),
+          fetchDailyChallenge()
         ]);
+        
+        setAllChallenges(fetchedChallenges);
+        setDailyChallenge(fetchedDailyChallenge);
         
         setSummaryData(summary);
         setChartData(chart);
@@ -787,8 +811,9 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
           </div>
 
           {/* Eco Challenge - Dynamic from 50 challenges */}
-          <div style={styles.challengeCard}>
-            <div style={{ position: 'relative', zIndex: 2 }}>
+          {currentChallenge && (
+            <div style={styles.challengeCard}>
+              <div style={{ position: 'relative', zIndex: 2 }}>
               {/* Header with browse toggle */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -800,7 +825,7 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
                       {showAllChallenges ? 'BROWSE CHALLENGES' : 'DAILY ECO-CHALLENGE'}
                     </span>
                     <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>
-                      {showAllChallenges ? `${currentChallengeIndex + 1} of ${challenges.length}` : `#${dailyChallenge.id} • ${dailyChallenge.category}`}
+                      {showAllChallenges ? `${currentChallengeIndex + 1} of ${allChallenges.length}` : `#${dailyChallenge?.id || 0} • ${dailyChallenge?.category || ''}`}
                     </div>
                   </div>
                 </div>
@@ -880,11 +905,15 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
               </div>
 
               {/* Tips */}
-              {currentChallenge.tips && (
+              {currentChallenge?.tips && Array.isArray(currentChallenge.tips) ? (
                 <div style={{ marginTop: '12px', fontSize: '12px', color: '#9ca3af' }}>
                   💡 Tip: {currentChallenge.tips[Math.floor(Math.random() * currentChallenge.tips.length)]}
                 </div>
-              )}
+              ) : currentChallenge?.tips ? (
+                <div style={{ marginTop: '12px', fontSize: '12px', color: '#9ca3af' }}>
+                  💡 Tip: {currentChallenge.tips}
+                </div>
+              ) : null}
 
               {challengeAccepted && (
                 <div style={{ 
@@ -900,25 +929,57 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
                 </div>
               )}
               
-              <button
-                style={{ 
-                  ...styles.challengeBtn, 
-                  background: challengeAccepted ? '#374151' : '#10b981', 
-                  marginTop: '16px',
-                  opacity: challengeAccepted || challengeLoading ? 0.8 : 1,
-                  cursor: challengeAccepted ? 'default' : 'pointer'
-                }}
-                onClick={handleChallengeClick}
-                disabled={challengeAccepted || challengeLoading}
-              >
-                {challengeAccepted ? <CheckCircle size={20} /> : null}
-                {challengeLoading ? 'Saving...' : challengeAccepted ? 'Challenge Completed! ✅' : 'Accept Challenge'}
-              </button>
+              {challengeStarted && !challengeAccepted && (
+                <div style={{ 
+                  marginTop: '12px', 
+                  padding: '12px', 
+                  background: 'rgba(245, 158, 11, 0.2)', 
+                  borderRadius: '12px',
+                  border: '1px solid rgba(245, 158, 11, 0.3)'
+                }}>
+                  <p style={{ color: '#d97706', fontSize: '13px', margin: 0 }}>
+                    ⏳ Challenge started! Once you've finished your action, click the button below to log your impact.
+                  </p>
+                </div>
+              )}
+              
+              <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                {!challengeStarted && !challengeAccepted ? (
+                  <button
+                    style={{ 
+                      ...styles.challengeBtn, 
+                      background: '#10b981', 
+                      marginTop: 0,
+                      flex: 1
+                    }}
+                    onClick={handleStartChallenge}
+                  >
+                    Accept Challenge
+                  </button>
+                ) : (
+                  <button
+                    style={{ 
+                      ...styles.challengeBtn, 
+                      background: challengeAccepted ? '#374151' : '#10b981', 
+                      marginTop: 0,
+                      flex: 1,
+                      opacity: challengeAccepted || challengeLoading ? 0.8 : 1,
+                      cursor: challengeAccepted ? 'default' : 'pointer'
+                    }}
+                    onClick={handleChallengeClick}
+                    disabled={challengeAccepted || challengeLoading}
+                  >
+                    {challengeAccepted ? <CheckCircle size={20} /> : null}
+                    {challengeLoading ? 'Saving...' : challengeAccepted ? 'Challenge Completed! ✅' : 'Complete Challenge'}
+                  </button>
+                )}
+              </div>
             </div>
             <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.1 }}>
               <Leaf size={200} />
             </div>
           </div>
+          )}
         </div>
 
         {/* Right Column */}

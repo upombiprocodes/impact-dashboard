@@ -2,8 +2,13 @@ package com.groupa11.impactdashboard.config;
 
 import com.groupa11.impactdashboard.model.*;
 import com.groupa11.impactdashboard.repository.*;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
+import java.io.InputStream;
+import java.util.List;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -18,6 +23,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ContributionRepository contributionRepo;
     private final ImpactDetailRepository impactDetailRepo;
     private final FoodRepository foodRepo;
+    private final ChallengeRepository challengeRepo;
 
     public DataSeeder(DashboardSummaryRepository summaryRepo,
                       WeeklyDataRepository weeklyDataRepo,
@@ -28,7 +34,8 @@ public class DataSeeder implements CommandLineRunner {
                       StreakDayRepository streakDayRepo,
                       ContributionRepository contributionRepo,
                       ImpactDetailRepository impactDetailRepo,
-                      FoodRepository foodRepo) {
+                      FoodRepository foodRepo,
+                      ChallengeRepository challengeRepo) {
         this.summaryRepo = summaryRepo;
         this.weeklyDataRepo = weeklyDataRepo;
         this.badgeRepo = badgeRepo;
@@ -39,11 +46,26 @@ public class DataSeeder implements CommandLineRunner {
         this.contributionRepo = contributionRepo;
         this.impactDetailRepo = impactDetailRepo;
         this.foodRepo = foodRepo;
+        this.challengeRepo = challengeRepo;
     }
 
     @Override
     public void run(String... args) {
-        // Only seed if database is empty (file-based H2 persists)
+        // Challenges (Seed this even if summary exists, in case we just added this feature)
+        try {
+            if (challengeRepo.count() == 0) {
+                ObjectMapper mapper = new ObjectMapper();
+                TypeReference<List<Challenge>> typeReference = new TypeReference<List<Challenge>>(){};
+                InputStream inputStream = new ClassPathResource("challenges.json").getInputStream();
+                List<Challenge> challenges = mapper.readValue(inputStream, typeReference);
+                challengeRepo.saveAll(challenges);
+                System.out.println("Challenges saved!");
+            }
+        } catch (Exception e) {
+            System.out.println("Unable to save challenges: " + e.getMessage());
+        }
+
+        // Only seed the rest if database is empty (file-based H2 persists)
         if (summaryRepo.count() > 0) {
             System.out.println("Database already initialized.");
             return;

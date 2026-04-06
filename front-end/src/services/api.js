@@ -65,3 +65,29 @@ export const fetchDashboardDetails = async () => {
         throw error;
     }
 };
+
+export const fetchChallenges = async () => {
+    try {
+        const response = await fetch(`${API_URL}/challenges`);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching challenges:', error);
+        return [];
+    }
+};
+
+export const fetchDailyChallenge = async () => {
+    try {
+        const response = await fetch(`${API_URL}/challenges/daily`);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching daily challenge:', error);
+        return null;
+    }
+};
