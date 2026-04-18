@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails, fetchChallenges, fetchDailyChallenge } from './services/api';
+import { fetchDashboardSummary, fetchDashboardChart, fetchBadges, fetchMonthlyGoal, fetchDashboardDetails, fetchChallenges, fetchDailyChallenge, fetchInsightsTotals, fetchCarbonJourneyWeekly } from './services/api';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import { TrendingDown, Award, Flame, Leaf, Calendar, LayoutDashboard, CheckCircle, Droplets, Mountain, ArrowRight, Star, Trophy, Zap, Target, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import LoginPage from './pages/LoginPage';
+import Sidebar from './components/Sidebar';
+import FoodSearch from './pages/FoodSearch';
+import MealBuilderPage from './pages/MealBuilder/MealBuilderPage';
+import InsightsPage from './pages/Insights/InsightsPage';
+import CommunityChallenges from './pages/CommunityChallenges/CommunityChallenges';
 
 // Main App Component with Auth
 const App = () => {
@@ -11,6 +16,7 @@ const App = () => {
     return saved ? JSON.parse(saved) : null;
   });
   const [token, setToken] = useState(() => localStorage.getItem('token'));
+  const [activeNav, setActiveNav] = useState('dashboard');
 
   const handleLogin = (userData, authToken) => {
     setUser(userData);
@@ -28,7 +34,18 @@ const App = () => {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  return <ImpactDashboard user={user} token={token} onLogout={handleLogout} />;
+  return (
+    <div style={{ minHeight: '100vh', background: '#f3f4f6', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif', display: 'flex' }}>
+      <Sidebar activeNav={activeNav} setActiveNav={setActiveNav} />
+      <div style={{ flex: 1, marginLeft: '80px' }}>
+        {activeNav === 'dashboard' && <ImpactDashboard user={user} token={token} onLogout={handleLogout} />}
+        {activeNav === 'food' && <FoodSearch />}
+        {activeNav === 'meal' && <MealBuilderPage />}
+        {activeNav === 'insight' && <InsightsPage />}
+        {activeNav === 'community' && <CommunityChallenges />}
+      </div>
+    </div>
+  );
 };
 
 const ImpactDashboard = ({ user, token, onLogout }) => {
@@ -82,14 +99,27 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
   const reloadDashboardData = async () => {
     try {
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
-      const [summary, chart] = await Promise.all([
-        token
-          ? fetch('http://127.0.0.1:8080/api/user/dashboard/summary', { headers }).then(r => r.json())
-          : fetchDashboardSummary(),
-        token
-          ? fetch('http://127.0.0.1:8080/api/user/dashboard/chart', { headers }).then(r => r.json())
-          : fetchDashboardChart(),
+
+      // Fetch CO2 totals and weekly journey from insights backend (port 8085)
+      const [insightsTotals, insightsWeekly] = await Promise.all([
+        fetchInsightsTotals(1),
+        fetchCarbonJourneyWeekly(1, 12)
       ]);
+
+      // Map insights totals to dashboard summary format
+      const summary = {
+        co2Emitted: insightsTotals.totalCo2Emitted || 0,
+        co2Saved: insightsTotals.totalCo2Saved || 0,
+        streak: summaryData.streak || 0
+      };
+
+      // Map weekly journey to dashboard chart format
+      const chart = insightsWeekly.map(w => ({
+        week: w.weekLabel,
+        footprint: w.totalEmitted,
+        saved: w.totalSaved || 0
+      }));
+
       setSummaryData(summary);
       setChartData(chart);
     } catch (err) {
@@ -177,13 +207,28 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
         // If logged in, try to fetch user-specific data
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
         
-        const [summary, chart, badgesData, goal, details, fetchedChallenges, fetchedDailyChallenge] = await Promise.all([
-          token 
-            ? fetch('http://127.0.0.1:8080/api/user/dashboard/summary', { headers }).then(r => r.json())
-            : fetchDashboardSummary(),
-          token
-            ? fetch('http://127.0.0.1:8080/api/user/dashboard/chart', { headers }).then(r => r.json())
-            : fetchDashboardChart(),
+        // Fetch CO2 data from insights endpoints
+        const [insightsTotals, insightsWeekly] = await Promise.all([
+          fetchInsightsTotals(1),
+          fetchCarbonJourneyWeekly(1, 12)
+        ]);
+
+        // Map insights totals → dashboard summary format
+        const summary = {
+          co2Emitted: insightsTotals.totalCo2Emitted || 0,
+          co2Saved: insightsTotals.totalCo2Saved || 0,
+          streak: 0
+        };
+
+        // Map weekly journey → dashboard chart format (week, footprint, saved)
+        const chart = insightsWeekly.map(w => ({
+          week: w.weekLabel,
+          footprint: w.totalEmitted,
+          saved: w.totalSaved || 0
+        }));
+
+        // Fetch remaining dashboard data from main backend (port 8080)
+        const [badgesData, goal, details, fetchedChallenges, fetchedDailyChallenge] = await Promise.all([
           fetchBadges(),
           fetchMonthlyGoal(),
           token
@@ -192,6 +237,11 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
           fetchChallenges(),
           fetchDailyChallenge()
         ]);
+
+        // If main backend has streak info, merge it in
+        if (details && details.streak) {
+          summary.streak = Array.isArray(details.streak) ? details.streak.length : 0;
+        }
         
         setAllChallenges(fetchedChallenges);
         setDailyChallenge(fetchedDailyChallenge);
@@ -381,7 +431,6 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
     },
     mainContent: {
       flex: 1,
-      marginLeft: '80px',
       padding: '32px',
       maxWidth: '1400px'
     },
@@ -1145,20 +1194,8 @@ const ImpactDashboard = ({ user, token, onLogout }) => {
   );
 
   return (
-    <div style={styles.container}>
-      {/* Logo Sidebar */}
-      <div style={styles.sidebarNav}>
-        <div><Leaf color="#10b981" size={32} /></div>
-        <div
-          style={{ ...styles.navItem, ...styles.navItemActive }}
-        >
-          <LayoutDashboard size={24} />
-        </div>
-      </div>
-
-      <div style={styles.mainContent}>
-        {renderDashboard()}
-      </div>
+    <div style={styles.mainContent}>
+      {renderDashboard()}
     </div>
   );
 };

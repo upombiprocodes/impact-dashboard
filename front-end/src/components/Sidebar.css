@@ -1,0 +1,48 @@
+.sidebar {
+  width: 80px;              
+  height: 100vh;             
+  background-color: #111827; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;       
+  padding-top: 2rem;
+  border-right: 1px solid #1f2937; 
+  position: fixed;          
+  left: 0;
+  top: 0;
+}
+
+.logo-container {
+  margin-bottom: 3rem; 
+}
+
+.nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem; 
+}
+
+.nav-item {
+  color: #9CA3AF; 
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.nav-item:hover {
+  color: white;
+  background-color: #374151; 
+}
+
+
+.nav-item.active {
+  background-color: #064E3B; 
+  color: #10B981;            
+  box-shadow: 0 0 0 1px #059669; 
+}
+
+
